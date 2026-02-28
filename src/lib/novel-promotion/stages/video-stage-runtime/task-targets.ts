@@ -30,7 +30,7 @@ export function buildPanelVideoTargets(storyboards: Storyboard[]): VideoTaskTarg
         key: `panel-video:${panel.id}`,
         targetType: 'NovelPromotionPanel',
         targetId: panel.id,
-        types: ['video_panel'],
+        types: ['video_panel', 'manual_asset_wait'],
         resource: 'video',
         hasOutput: !!panel.videoUrl,
       })
@@ -48,7 +48,7 @@ export function buildPanelLipTargets(storyboards: Storyboard[]): VideoTaskTarget
         key: `panel-lip:${panel.id}`,
         targetType: 'NovelPromotionPanel',
         targetId: panel.id,
-        types: ['lip_sync'],
+        types: ['lip_sync', 'manual_asset_wait'],
         resource: 'video',
         hasOutput: !!panel.lipSyncVideoUrl,
       })

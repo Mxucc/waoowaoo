@@ -51,6 +51,7 @@ interface SettingsModalProps {
     videoRatio?: string
     capabilityOverrides?: CapabilitySelections
     ttsRate?: string
+    manualAssetMode?: boolean
     onArtStyleChange?: (value: string) => void
     onAnalysisModelChange?: (value: string) => void
     onCharacterModelChange?: (value: string) => void
@@ -62,6 +63,7 @@ interface SettingsModalProps {
     onVideoRatioChange?: (value: string) => void
     onCapabilityOverridesChange?: (value: CapabilitySelections) => void
     onTTSRateChange?: (value: string) => void
+    onManualAssetModeChange?: (enabled: boolean) => void
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -133,6 +135,7 @@ export function SettingsModal({
     videoRatio = '9:16',
     capabilityOverrides,
     ttsRate,
+    manualAssetMode = false,
     onArtStyleChange,
     onAnalysisModelChange,
     onCharacterModelChange,
@@ -143,6 +146,7 @@ export function SettingsModal({
     onVideoRatioChange,
     onCapabilityOverridesChange,
     onTTSRateChange,
+    onManualAssetModeChange,
 }: SettingsModalProps) {
     const t = useTranslations('configModal')
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle')
@@ -307,13 +311,19 @@ export function SettingsModal({
     if (!isOpen) return null
 
     return (
-        <div
-            className="fixed inset-0 z-[100] flex items-center justify-center glass-overlay animate-fadeIn"
-            onClick={(e) => {
-                if (e.target === e.currentTarget) onClose()
-            }}
-        >
-            <div className="glass-surface-modal p-7 w-full max-w-3xl transform transition-all scale-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center glass-overlay animate-fadeIn">
+            <button
+                type="button"
+                aria-label="Close"
+                className="absolute inset-0"
+                onClick={onClose}
+            />
+            <div
+                role="dialog"
+                aria-modal="true"
+                className="glass-surface-modal relative z-10 p-7 w-full max-w-3xl transform transition-all scale-100 max-h-[90vh] overflow-y-auto custom-scrollbar"
+                onMouseDown={(e) => e.stopPropagation()}
+            >
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold text-[var(--glass-text-primary)]">{t('title')}</h2>
                     <div className="flex items-center gap-3">
@@ -334,6 +344,7 @@ export function SettingsModal({
                             )}
                         </div>
                         <button
+                            type="button"
                             onClick={onClose}
                             className="glass-btn-base glass-btn-soft rounded-full p-2 text-[var(--glass-text-tertiary)] hover:text-[var(--glass-text-secondary)]"
                         >
@@ -361,7 +372,7 @@ export function SettingsModal({
                         )}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--glass-text-secondary)]">{t('analysisModel')}</label>
+                                <div className="text-sm font-medium text-[var(--glass-text-secondary)]">{t('analysisModel')}</div>
                                 <ModelCapabilityDropdown
                                     models={userModels.llm}
                                     value={analysisModel}
@@ -376,7 +387,7 @@ export function SettingsModal({
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--glass-text-secondary)]">{t('characterModel')}</label>
+                                <div className="text-sm font-medium text-[var(--glass-text-secondary)]">{t('characterModel')}</div>
                                 <ModelCapabilityDropdown
                                     models={userModels.image}
                                     value={characterModel}
@@ -390,7 +401,7 @@ export function SettingsModal({
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--glass-text-secondary)]">{t('locationModel')}</label>
+                                <div className="text-sm font-medium text-[var(--glass-text-secondary)]">{t('locationModel')}</div>
                                 <ModelCapabilityDropdown
                                     models={userModels.image}
                                     value={locationModel}
@@ -404,7 +415,7 @@ export function SettingsModal({
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--glass-text-secondary)]">{t('storyboardModel')}</label>
+                                <div className="text-sm font-medium text-[var(--glass-text-secondary)]">{t('storyboardModel')}</div>
                                 <ModelCapabilityDropdown
                                     models={userModels.image}
                                     value={imageModel}
@@ -418,7 +429,7 @@ export function SettingsModal({
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--glass-text-secondary)]">{t('editModel')}</label>
+                                <div className="text-sm font-medium text-[var(--glass-text-secondary)]">{t('editModel')}</div>
                                 <ModelCapabilityDropdown
                                     models={userModels.image}
                                     value={editModel}
@@ -432,7 +443,7 @@ export function SettingsModal({
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--glass-text-secondary)]">{t('videoModel')}</label>
+                                <div className="text-sm font-medium text-[var(--glass-text-secondary)]">{t('videoModel')}</div>
                                 <ModelCapabilityDropdown
                                     models={userModels.video}
                                     value={videoModel}
@@ -457,6 +468,26 @@ export function SettingsModal({
                             />
                         </div>
                     </div>
+
+                    {onManualAssetModeChange && (
+                        <div className="glass-surface-soft p-5 sm:p-6 space-y-3">
+                            <h3 className="text-sm font-semibold text-[var(--glass-text-tertiary)]">手动生成素材</h3>
+                            <label className="flex items-center gap-3 text-sm text-[var(--glass-text-secondary)]">
+                                <input
+                                    type="checkbox"
+                                    checked={manualAssetMode}
+                                    onChange={(e) => {
+                                        onManualAssetModeChange(e.target.checked)
+                                        showSaved()
+                                    }}
+                                />
+                                <span>启用手动上传（替代自动调用 API 生成）</span>
+                            </label>
+                            <div className="text-xs text-[var(--glass-text-tertiary)]">
+                                开启后，生成图片/视频/音频时会进入等待状态并弹出上传窗口，上传后继续流程。
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

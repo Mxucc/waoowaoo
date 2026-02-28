@@ -21,7 +21,7 @@ export function useVoiceTaskState({
       key: `line:${line.id}`,
       targetType: 'NovelPromotionVoiceLine',
       targetId: line.id,
-      types: ['voice_line'],
+      types: ['voice_line', 'manual_asset_wait'],
       resource: 'audio' as const,
       hasOutput: !!line.audioUrl,
     }))
@@ -67,9 +67,24 @@ export function useVoiceTaskState({
     return ids
   }, [activeVoiceTaskLineIds, submittingVoiceLineIds])
 
+  const manualWaitTaskIdByLineId = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const line of voiceLines) {
+      const state = voiceTaskStates.getTaskState(`line:${line.id}`)
+      if (!state) continue
+      const isRunning = state.phase === 'queued' || state.phase === 'processing'
+      if (!isRunning) continue
+      if (state.runningTaskType !== 'manual_asset_wait') continue
+      if (typeof state.runningTaskId !== 'string' || !state.runningTaskId.trim()) continue
+      map.set(line.id, state.runningTaskId)
+    }
+    return map
+  }, [voiceLines, voiceTaskStates])
+
   return {
     voiceStatusStateByLineId,
     activeVoiceTaskLineIds,
     runningLineIds,
+    manualWaitTaskIdByLineId,
   }
 }

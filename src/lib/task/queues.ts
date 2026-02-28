@@ -7,6 +7,7 @@ export const QUEUE_NAME = {
   VIDEO: 'waoowaoo-video',
   VOICE: 'waoowaoo-voice',
   TEXT: 'waoowaoo-text',
+  MANUAL: 'waoowaoo-manual',
 } as const
 
 const defaultJobOptions: JobsOptions = {
@@ -39,7 +40,17 @@ export const textQueue = new Queue<TaskJobData>(QUEUE_NAME.TEXT, {
   defaultJobOptions,
 })
 
-const ALL_QUEUES = [imageQueue, videoQueue, voiceQueue, textQueue]
+export const manualQueue = new Queue<TaskJobData>(QUEUE_NAME.MANUAL, {
+  connection: queueRedis,
+  defaultJobOptions: {
+    ...defaultJobOptions,
+    removeOnComplete: 200,
+    removeOnFail: 200,
+    attempts: 1,
+  },
+})
+
+const ALL_QUEUES = [imageQueue, videoQueue, voiceQueue, textQueue, manualQueue]
 
 const IMAGE_TYPES = new Set<TaskType>([
   TASK_TYPE.IMAGE_PANEL,
@@ -58,11 +69,13 @@ const VOICE_TYPES = new Set<TaskType>([
   TASK_TYPE.VOICE_DESIGN,
   TASK_TYPE.ASSET_HUB_VOICE_DESIGN,
 ])
+const MANUAL_TYPES = new Set<TaskType>([TASK_TYPE.MANUAL_ASSET_WAIT])
 
 export function getQueueTypeByTaskType(type: TaskType): QueueType {
   if (IMAGE_TYPES.has(type)) return 'image'
   if (VIDEO_TYPES.has(type)) return 'video'
   if (VOICE_TYPES.has(type)) return 'voice'
+  if (MANUAL_TYPES.has(type)) return 'manual'
   return 'text'
 }
 
@@ -74,6 +87,8 @@ export function getQueueByType(type: QueueType) {
       return videoQueue
     case 'voice':
       return voiceQueue
+    case 'manual':
+      return manualQueue
     case 'text':
     default:
       return textQueue

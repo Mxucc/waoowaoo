@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { resolveTaskResponse } from '@/lib/task/client'
+import { emitManualAssetTaskCreated } from '@/lib/manual-assets/client'
 import {
     requestBlobWithError,
     requestJsonWithError,
@@ -130,24 +131,45 @@ export function useAnalyzeProjectVoice(projectId: string) {
 
 export function useGenerateProjectVoice(projectId: string) {
     return useMutation({
-        mutationFn: async ({
-            episodeId,
-            lineId,
-            all,
-        }: {
+        mutationFn: async (variables: {
             episodeId: string
             lineId?: string
             all?: boolean
-        }) =>
-            await requestJsonWithError<GenerateProjectVoiceResponse>(
+            manualMode?: boolean
+            openManualModal?: boolean
+        }) => {
+            const { episodeId, lineId, all, manualMode } = variables
+            return await requestJsonWithError<GenerateProjectVoiceResponse>(
                 `/api/novel-promotion/${projectId}/voice-generate`,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(all ? { episodeId, all: true } : { episodeId, lineId }),
+                    body: JSON.stringify(
+                        all
+                            ? {
+                                episodeId,
+                                all: true,
+                                ...(manualMode ? { manualMode: true } : {}),
+                            }
+                            : {
+                                episodeId,
+                                lineId,
+                                ...(manualMode ? { manualMode: true } : {}),
+                            },
+                    ),
                 },
                 'voice generate failed',
-            ),
+            )
+        },
+        onSuccess: (data, variables) => {
+            if (!variables.manualMode) return
+            if (variables.openManualModal === false) return
+            if (variables.all) return
+            const taskId = (data as { taskId?: unknown })?.taskId
+            if (typeof taskId === 'string' && taskId.trim()) {
+                emitManualAssetTaskCreated(taskId)
+            }
+        },
     })
 }
 

@@ -86,6 +86,8 @@ export interface VideoPanel {
   videoUrl?: string
   videoGenerationMode?: VideoGenerationMode
   videoTaskRunning?: boolean
+  runningTaskId?: string | null
+  runningTaskType?: string | null
   videoErrorMessage?: string  // 视频生成错误消息
   videoModel?: string
   linkedToNextPanel?: boolean

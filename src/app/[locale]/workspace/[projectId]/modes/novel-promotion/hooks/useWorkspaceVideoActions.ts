@@ -4,6 +4,7 @@ import { logInfo as _ulogInfo, logError as _ulogError } from '@/lib/logging/core
 import { useGenerateVideo, useBatchGenerateVideos } from '@/lib/query/hooks/useStoryboards'
 import { useUpdateProjectPanelVideoPrompt, useUpdateProjectClip, useUpdateProjectConfig } from '@/lib/query/hooks'
 import type { BatchVideoGenerationParams, VideoGenerationOptions } from '../components/video'
+import { useWorkspaceProvider } from '../WorkspaceProvider'
 
 interface UseWorkspaceVideoActionsParams {
   projectId: string
@@ -32,6 +33,7 @@ export function useWorkspaceVideoActions({
   episodeId,
   t,
 }: UseWorkspaceVideoActionsParams) {
+  const { manualAssetMode } = useWorkspaceProvider()
   const generateVideoMutation = useGenerateVideo(projectId, episodeId || null)
   const batchGenerateVideosMutation = useBatchGenerateVideos(projectId, episodeId || null)
   const updateProjectPanelVideoPromptMutation = useUpdateProjectPanelVideoPrompt(projectId)
@@ -64,6 +66,8 @@ export function useWorkspaceVideoActions({
         videoModel: normalizedVideoModel,
         firstLastFrame,
         generationOptions,
+        manualMode: manualAssetMode,
+        openManualModal: true,
       })
     } catch (err: unknown) {
       if (isAbortError(err)) {
@@ -87,6 +91,7 @@ export function useWorkspaceVideoActions({
       await batchGenerateVideosMutation.mutateAsync({
         ...options,
         videoModel: normalizedVideoModel,
+        manualMode: manualAssetMode,
       })
     } catch (err: unknown) {
       if (isAbortError(err)) {

@@ -5,6 +5,7 @@ import EmotionSettingsPanel from './EmotionSettingsPanel'
 import TaskStatusInline from '@/components/task/TaskStatusInline'
 import { resolveTaskPresentationState, type TaskPresentationState } from '@/lib/task/presentation'
 import { AppIcon } from '@/components/ui/icons'
+import { useWorkspaceProvider } from '../../WorkspaceProvider'
 
 interface VoiceLine {
     id: string
@@ -24,6 +25,7 @@ interface VoiceLineCardProps {
     line: VoiceLine
     isVoiceTaskRunning: boolean
     statusState?: TaskPresentationState | null
+    manualWaitTaskId?: string | null
     isPlaying: boolean
     hasVoice: boolean
     onTogglePlay: (lineId: string, audioUrl: string) => void
@@ -40,6 +42,7 @@ export default function VoiceLineCard({
     line,
     isVoiceTaskRunning,
     statusState,
+    manualWaitTaskId = null,
     isPlaying,
     hasVoice,
     onTogglePlay,
@@ -52,6 +55,7 @@ export default function VoiceLineCard({
     onSaveEmotionSettings
 }: VoiceLineCardProps) {
     const t = useTranslations('voice')
+    const { openManualAssetModal } = useWorkspaceProvider()
     const [isEmotionExpanded, setIsEmotionExpanded] = useState(false)
     const hasPanelBinding = !!onLocatePanel && !!line.matchedStoryboardId && line.matchedPanelIndex !== null && line.matchedPanelIndex !== undefined
     const locateTitle = t("lineCard.locateVideo")
@@ -80,6 +84,7 @@ export default function VoiceLineCard({
                     <div className="flex items-center justify-center gap-3">
                         {/* 播放按钮 */}
                         <button
+                            type="button"
                             onClick={() => onTogglePlay(line.id, line.audioUrl!)}
                             className="flex items-center justify-center w-9 h-9 bg-[var(--glass-tone-success-fg)] text-white rounded-xl hover:bg-[var(--glass-tone-success-fg)] shadow-[var(--glass-shadow-sm)] transition-all"
                             title={isPlaying ? t("lineCard.pause") : t("lineCard.play")}
@@ -92,6 +97,7 @@ export default function VoiceLineCard({
                         </button>
                         {/* 重新生成按钮 */}
                         <button
+                            type="button"
                             onClick={() => onGenerate(line.id)}
                             disabled={!hasVoice || isVoiceTaskRunning}
                             className="flex items-center justify-center w-8 h-8 text-[var(--glass-text-tertiary)] hover:text-[var(--glass-tone-info-fg)] hover:bg-[var(--glass-tone-info-bg)] rounded-xl transition-all disabled:opacity-50"
@@ -105,6 +111,7 @@ export default function VoiceLineCard({
                         </button>
                         {/* 下载按钮 */}
                         <button
+                            type="button"
                             onClick={() => onDownload(line.audioUrl!)}
                             className="flex items-center justify-center w-8 h-8 text-[var(--glass-text-tertiary)] hover:text-[var(--glass-tone-info-fg)] hover:bg-[var(--glass-tone-info-bg)] rounded-xl transition-all"
                             title={t("common.download")}
@@ -114,14 +121,24 @@ export default function VoiceLineCard({
                     </div>
                 ) : isVoiceTaskRunning ? (
                     /* 生成中状态：显示状态指示器 */
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-center gap-2">
                         <div className="flex items-center gap-2 px-5 py-2 bg-[var(--glass-accent-from)] text-white rounded-xl text-sm font-medium shadow-[var(--glass-shadow-sm)]">
                             <TaskStatusInline state={inlineStatusState} className="text-white [&>span]:text-white [&_svg]:text-white" />
                         </div>
+                        {manualWaitTaskId && (
+                            <button
+                                type="button"
+                                onClick={() => openManualAssetModal(manualWaitTaskId)}
+                                className="px-5 py-2 bg-[var(--glass-tone-success-fg)] text-white rounded-xl text-sm font-medium shadow-[var(--glass-shadow-sm)] transition-all"
+                            >
+                                继续上传
+                            </button>
+                        )}
                     </div>
                 ) : (
                     /* 生成按钮 */
                     <button
+                        type="button"
                         onClick={() => onGenerate(line.id)}
                         disabled={!hasVoice}
                         className="flex items-center gap-2 px-5 py-2 bg-[var(--glass-accent-from)] text-white rounded-xl text-sm font-medium hover:bg-[var(--glass-accent-to)] shadow-[var(--glass-shadow-sm)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -145,6 +162,7 @@ export default function VoiceLineCard({
                             <AppIcon name="checkXs" className="h-3 w-3" />
                         </div>
                         <button
+                            type="button"
                             onClick={() => onDeleteAudio(line.id)}
                             className="flex items-center justify-center w-5 h-5 bg-[var(--glass-tone-warning-fg)] text-white rounded-md shadow-[var(--glass-shadow-sm)] hover:bg-[var(--glass-tone-warning-fg)] transition-colors"
                             title={t("lineCard.deleteAudio")}
@@ -165,6 +183,7 @@ export default function VoiceLineCard({
                     <div className="mt-2 flex justify-end gap-0.5">
                         {hasPanelBinding && (
                             <button
+                                type="button"
                                 onClick={() => onLocatePanel?.(line)}
                                 className="px-2 py-1 text-[11px] leading-none text-[var(--glass-text-tertiary)] hover:text-[var(--glass-tone-info-fg)] hover:bg-[var(--glass-tone-info-bg)] border border-[var(--glass-stroke-base)] hover:border-[var(--glass-stroke-focus)] rounded-md transition-colors"
                                 title={locateTitle}
@@ -173,6 +192,7 @@ export default function VoiceLineCard({
                             </button>
                         )}
                         <button
+                            type="button"
                             onClick={() => onEdit(line)}
                             className="p-1 text-[var(--glass-text-tertiary)] hover:text-[var(--glass-tone-info-fg)] hover:bg-[var(--glass-tone-info-bg)] rounded transition-colors"
                             title={t("lineCard.editLine")}
@@ -180,6 +200,7 @@ export default function VoiceLineCard({
                             <AppIcon name="editSquare" className="w-3.5 h-3.5" />
                         </button>
                         <button
+                            type="button"
                             onClick={() => onDelete(line.id)}
                             className="p-1 text-[var(--glass-text-tertiary)] hover:text-[var(--glass-tone-danger-fg)] hover:bg-[var(--glass-tone-danger-bg)] rounded transition-colors"
                             title={t("lineCard.deleteLine")}
@@ -195,6 +216,7 @@ export default function VoiceLineCard({
                 hasVoice && (
                     <>
                         <button
+                            type="button"
                             onClick={() => setIsEmotionExpanded(!isEmotionExpanded)}
                             className="w-full px-4 py-2 text-xs text-[var(--glass-tone-info-fg)] hover:bg-[var(--glass-tone-info-bg)] flex items-center justify-center gap-1.5 font-medium transition-colors"
                         >

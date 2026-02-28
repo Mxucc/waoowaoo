@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { logError as _ulogError } from '@/lib/logging/core'
 import { useProjectAssets } from '@/lib/query/hooks/useProjectAssets'
 import { useEpisodeData } from '@/lib/query/hooks/useProjectData'
 import {
@@ -29,6 +30,7 @@ import { useVoiceGenerationActions } from './voice-stage-runtime/useVoiceGenerat
 import { useVoiceLineCrudActions } from './voice-stage-runtime/useVoiceLineCrudActions'
 import { useVoiceRuntimeSync } from './voice-stage-runtime/useVoiceRuntimeSync'
 import { useVoiceLineBindings } from './voice-stage-runtime/useVoiceLineBindings'
+import { useWorkspaceProvider } from '@/app/[locale]/workspace/[projectId]/modes/novel-promotion/WorkspaceProvider'
 
 export type { VoiceStageShellProps } from './voice-stage-runtime/types'
 
@@ -42,6 +44,7 @@ export function useVoiceStageRuntime({
   onOpenAssetLibraryForCharacter,
 }: VoiceStageShellProps) {
   const t = useTranslations('voice')
+  const { manualAssetMode } = useWorkspaceProvider()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -115,7 +118,12 @@ export function useVoiceStageRuntime({
   })
   const { playingLineId, handleTogglePlayAudio } = useVoicePlayback()
   const [submittingVoiceLineIds, setSubmittingVoiceLineIds] = useState<Set<string>>(new Set())
-  const { voiceStatusStateByLineId, activeVoiceTaskLineIds, runningLineIds } = useVoiceTaskState({
+  const {
+    voiceStatusStateByLineId,
+    activeVoiceTaskLineIds,
+    runningLineIds,
+    manualWaitTaskIdByLineId,
+  } = useVoiceTaskState({
     projectId,
     voiceLines,
     submittingVoiceLineIds,
@@ -146,6 +154,7 @@ export function useVoiceStageRuntime({
   } = useVoiceGenerationActions({
     episodeId,
     t: (key) => t(key as never),
+    manualAssetMode,
     voiceLines,
     linesWithAudio,
     speakerCharacterMap,
@@ -229,8 +238,8 @@ export function useVoiceStageRuntime({
       })
       // 重新加载数据以刷新 speakerVoices
       await loadData()
-    } catch {
-      // 处理后的错误会被 mutation 的 onError 捕获
+    } catch (error: unknown) {
+      _ulogError('[voice-stage] update speaker voice failed', error)
     }
     setInlineBindingSpeaker(null)
   }, [episodeId, loadData, updateSpeakerVoiceMutation])
@@ -285,6 +294,7 @@ export function useVoiceStageRuntime({
           voiceLines={voiceLines}
           runningLineIds={runningLineIds}
           voiceStatusStateByLineId={voiceStatusStateByLineId}
+          manualWaitTaskIdByLineId={manualWaitTaskIdByLineId}
           playingLineId={playingLineId}
           analyzing={analyzing}
           getSpeakerVoiceUrl={getSpeakerVoiceUrl}

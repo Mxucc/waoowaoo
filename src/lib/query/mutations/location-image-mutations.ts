@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef } from 'react'
 import type { Location, Project } from '@/types/project'
+import { emitManualAssetTaskCreated } from '@/lib/manual-assets/client'
 import { queryKeys } from '../keys'
 import type { ProjectAssetsData } from '../hooks/useProjectAssets'
 import {
@@ -75,7 +76,13 @@ export function useGenerateProjectLocationImage(projectId: string) {
         invalidateQueryTemplates(queryClient, [queryKeys.projectAssets.all(projectId)])
 
     return useMutation({
-        mutationFn: async ({ locationId, imageIndex }: { locationId: string; imageIndex?: number }) => {
+        mutationFn: async (variables: {
+            locationId: string
+            imageIndex?: number
+            manualMode?: boolean
+            openManualModal?: boolean
+        }) => {
+            const { locationId, imageIndex, manualMode } = variables
             return await requestJsonWithError(`/api/novel-promotion/${projectId}/generate-image`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -83,8 +90,16 @@ export function useGenerateProjectLocationImage(projectId: string) {
                     type: 'location',
                     id: locationId,
                     imageIndex
+                    ,...(manualMode ? { manualMode: true } : {})
                 })
             }, 'Failed to generate image')
+        },
+        onSuccess: (data, variables) => {
+            if (!variables.manualMode || variables.openManualModal === false) return
+            const taskId = (data as { taskId?: unknown })?.taskId
+            if (typeof taskId === 'string' && taskId.trim()) {
+                emitManualAssetTaskCreated(taskId)
+            }
         },
         onMutate: ({ locationId }) => {
             upsertTaskTargetOverlay(queryClient, {

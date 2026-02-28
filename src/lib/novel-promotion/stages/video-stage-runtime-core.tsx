@@ -21,6 +21,7 @@ import ImagePreviewModal from '@/components/ui/ImagePreviewModal'
 import { ModelCapabilityDropdown } from '@/components/ui/config-modals/ModelCapabilityDropdown'
 import VideoTimelinePanel from '@/app/[locale]/workspace/[projectId]/modes/novel-promotion/components/video-stage/VideoTimelinePanel'
 import VideoRenderPanel from '@/app/[locale]/workspace/[projectId]/modes/novel-promotion/components/video-stage/VideoRenderPanel'
+import { useWorkspaceProvider } from '@/app/[locale]/workspace/[projectId]/modes/novel-promotion/WorkspaceProvider'
 import type { VideoStageShellProps } from './video-stage-runtime/types'
 import {
   type EffectiveVideoCapabilityDefinition,
@@ -74,6 +75,7 @@ export function useVideoStageRuntime({
   onEnterEditor,
 }: VideoStageShellProps) {
   const t = useTranslations('video')
+  const { manualAssetMode } = useWorkspaceProvider()
 
   const {
     panelVideoPreference,
@@ -319,12 +321,14 @@ export function useVideoStageRuntime({
         panelIndex,
         voiceLineId,
         panelId,
+        manualMode: manualAssetMode,
+        openManualModal: true,
       })
     } catch (error: unknown) {
       _ulogError('Lip sync error:', error)
       throw error
     }
-  }, [lipSyncMutation])
+  }, [lipSyncMutation, manualAssetMode])
 
   const runningCount = allPanels.filter((panel) => panel.videoTaskRunning || panel.lipSyncTaskRunning).length
   const failedCount = allPanels.filter((panel) => !!panel.videoErrorMessage || !!panel.lipSyncErrorMessage).length
@@ -429,13 +433,15 @@ export function useVideoStageRuntime({
       />
 
       {isBatchConfigOpen && (
-        <div
-          className="fixed inset-0 z-[120] glass-overlay flex items-center justify-center p-4"
-          onClick={handleCloseBatchGenerateModal}
-        >
+        <div className="fixed inset-0 z-[120] glass-overlay flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="Close"
+            className="absolute inset-0"
+            onClick={handleCloseBatchGenerateModal}
+          />
           <div
-            className="glass-surface-modal w-full max-w-2xl p-5 space-y-4"
-            onClick={(event) => event.stopPropagation()}
+            className="glass-surface-modal relative z-10 w-full max-w-2xl p-5 space-y-4"
           >
             <div className="space-y-1">
               <h3 className="text-lg font-semibold text-[var(--glass-text-primary)]">

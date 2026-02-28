@@ -18,6 +18,7 @@ import { useState, useCallback, useMemo } from 'react'
 // 移除了 useRouter 导入，因为不再需要在组件中操作 URL
 import { Character, CharacterAppearance } from '@/types/project'
 import { resolveTaskPresentationState } from '@/lib/task/presentation'
+import { useWorkspaceProvider } from '../WorkspaceProvider'
 import {
   useGenerateProjectCharacterImage,
   useGenerateProjectLocationImage,
@@ -62,6 +63,7 @@ export default function AssetsStage({
   triggerGlobalAnalyze = false,
   onGlobalAnalyzeComplete
 }: AssetsStageProps) {
+  const { manualAssetMode } = useWorkspaceProvider()
   // 🔥 V6.5 重构：直接订阅缓存，消除 props drilling
   const { data: assets } = useProjectAssets(projectId)
   // 🔧 使用 useMemo 稳定引用，防止 useCallback/useEffect 依赖问题
@@ -76,14 +78,24 @@ export default function AssetsStage({
   const generateLocationImage = useGenerateProjectLocationImage(projectId)
 
   // 🔥 内部图片生成函数 - 使用 mutation hooks 实现乐观更新
-  const handleGenerateImage = useCallback(async (type: 'character' | 'location', id: string, appearanceId?: string) => {
+  const handleGenerateImage = useCallback(async (type: 'character' | 'location', id: string, appearanceId?: string, openManualModal = true) => {
     if (type === 'character' && appearanceId) {
-      await generateCharacterImage.mutateAsync({ characterId: id, appearanceId })
+      await generateCharacterImage.mutateAsync({
+        characterId: id,
+        appearanceId,
+        manualMode: manualAssetMode,
+        openManualModal,
+      })
     } else if (type === 'location') {
       // 场景生成默认使用 imageIndex: 0
-      await generateLocationImage.mutateAsync({ locationId: id, imageIndex: 0 })
+      await generateLocationImage.mutateAsync({
+        locationId: id,
+        imageIndex: 0,
+        manualMode: manualAssetMode,
+        openManualModal,
+      })
     }
-  }, [generateCharacterImage, generateLocationImage])
+  }, [generateCharacterImage, generateLocationImage, manualAssetMode])
 
   const t = useTranslations('assets')
   // 计算资产总数

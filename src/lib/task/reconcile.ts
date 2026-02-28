@@ -18,6 +18,7 @@ import {
     videoQueue,
     voiceQueue,
     textQueue,
+    manualQueue,
 } from './queues'
 
 // ────────────────────── 常量 ──────────────────────
@@ -43,7 +44,7 @@ const MISSING_RECONCILE_GRACE_MS = 30_000
 
 type JobState = 'alive' | 'terminal' | 'missing'
 
-const ALL_QUEUES = [imageQueue, videoQueue, voiceQueue, textQueue]
+const ALL_QUEUES = [imageQueue, videoQueue, voiceQueue, textQueue, manualQueue]
 
 /**
  * 检查 BullMQ 中某个 Job 的真实状态。

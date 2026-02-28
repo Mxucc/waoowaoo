@@ -182,6 +182,7 @@ export const POST = apiHandler(async (
   requireVideoModelKeyFromPayload(body)
   const locale = resolveRequiredTaskLocale(request, body)
   const isBatch = body?.all === true
+  const manualMode = body?.manualMode === true
 
   validateFirstLastFrameModel(body?.firstLastFrame)
   await validateVideoCapabilityCombination({
@@ -205,7 +206,13 @@ export const POST = apiHandler(async (
           { videoUrl: '' },
         ],
       },
-      select: { id: true },
+      select: {
+        id: true,
+        videoPrompt: true,
+        firstLastFramePrompt: true,
+        description: true,
+        srtSegment: true,
+      },
     })
 
     if (panels.length === 0) {
@@ -213,8 +220,57 @@ export const POST = apiHandler(async (
     }
 
     const results = await Promise.all(
-      panels.map(async (panel) =>
-        submitTask({
+      panels.map(async (panel) => {
+        if (manualMode) {
+          const endpoint = `/api/novel-promotion/${projectId}/upload-panel-video`
+          const prompt = panel.videoPrompt || panel.firstLastFramePrompt || panel.srtSegment || panel.description || ''
+          const modelKey = resolveVideoModelKeyFromPayload(isRecord(body) ? body : {})
+          const manualPayload: Record<string, unknown> = {
+            stage: 'manual_asset_wait',
+            stageLabel: '等待手动上传素材',
+            manualAsset: {
+              kind: 'video',
+              modelType: 'video',
+              modelKey: modelKey || null,
+              items: [
+                {
+                  key: 'raw',
+                  label: '视频',
+                  prompt,
+                  upload: {
+                    endpoint,
+                    method: 'POST',
+                    fileField: 'file',
+                    fields: {
+                      panelId: panel.id,
+                      kind: 'raw',
+                    },
+                  },
+                },
+              ],
+              remainingKeys: ['raw'],
+              totalCount: 1,
+            },
+          }
+          return submitTask({
+            userId: session.user.id,
+            locale,
+            requestId: getRequestId(request),
+            projectId,
+            episodeId,
+            type: TASK_TYPE.MANUAL_ASSET_WAIT,
+            targetType: 'NovelPromotionPanel',
+            targetId: panel.id,
+            payload: withTaskUiPayload(manualPayload, {
+              hasOutputAtStart: await hasPanelVideoOutput(panel.id),
+              intent: 'manual_upload',
+            }),
+            dedupeKey: `manual_asset_wait:video_panel:${panel.id}:raw`,
+            billingInfo: null,
+          })
+        }
+
+        return submitTask({
           userId: session.user.id,
           locale,
           requestId: getRequestId(request),
@@ -228,8 +284,8 @@ export const POST = apiHandler(async (
           }),
           dedupeKey: `video_panel:${panel.id}`,
           billingInfo: buildVideoPanelBillingInfoOrThrow(body),
-        }),
-      ),
+        })
+      }),
     )
 
     return NextResponse.json({ tasks: results, total: panels.length })
@@ -248,6 +304,64 @@ export const POST = apiHandler(async (
 
   if (!panel) {
     throw new ApiError('NOT_FOUND')
+  }
+
+  if (manualMode) {
+    const endpoint = `/api/novel-promotion/${projectId}/upload-panel-video`
+    const panelDetails = await prisma.novelPromotionPanel.findUnique({
+      where: { id: panel.id },
+      select: { id: true, videoPrompt: true, firstLastFramePrompt: true, description: true, srtSegment: true },
+    })
+    const prompt = panelDetails?.videoPrompt
+      || panelDetails?.firstLastFramePrompt
+      || panelDetails?.srtSegment
+      || panelDetails?.description
+      || ''
+    const modelKey = resolveVideoModelKeyFromPayload(isRecord(body) ? body : {})
+    const manualPayload: Record<string, unknown> = {
+      stage: 'manual_asset_wait',
+      stageLabel: '等待手动上传素材',
+      manualAsset: {
+        kind: 'video',
+        modelType: 'video',
+        modelKey: modelKey || null,
+        items: [
+          {
+            key: 'raw',
+            label: '视频',
+            prompt,
+            upload: {
+              endpoint,
+              method: 'POST',
+              fileField: 'file',
+              fields: {
+                panelId: panel.id,
+                kind: 'raw',
+              },
+            },
+          },
+        ],
+        remainingKeys: ['raw'],
+        totalCount: 1,
+      },
+    }
+
+    const result = await submitTask({
+      userId: session.user.id,
+      locale,
+      requestId: getRequestId(request),
+      projectId,
+      type: TASK_TYPE.MANUAL_ASSET_WAIT,
+      targetType: 'NovelPromotionPanel',
+      targetId: panel.id,
+      payload: withTaskUiPayload(manualPayload, {
+        hasOutputAtStart: await hasPanelVideoOutput(panel.id),
+        intent: 'manual_upload',
+      }),
+      dedupeKey: `manual_asset_wait:video_panel:${panel.id}:raw`,
+      billingInfo: null,
+    })
+    return NextResponse.json(result)
   }
 
   const result = await submitTask({
