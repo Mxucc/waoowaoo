@@ -10,6 +10,8 @@ import type {
 interface TaskStateLike {
   phase?: string | null
   lastError?: { message?: string } | null
+  runningTaskId?: string | null
+  runningTaskType?: string | null
 }
 
 interface TaskPresentationLike {
@@ -56,6 +58,10 @@ export function useVideoPanelsProjection({
         const panelId = panel.id
         const panelVideoState = panelId ? panelVideoStates.getTaskState(`panel-video:${panelId}`) : null
         const panelLipState = panelId ? panelLipStates.getTaskState(`panel-lip:${panelId}`) : null
+        const manualState = [panelLipState, panelVideoState].find((state) => {
+          const isRunning = state?.phase === 'queued' || state?.phase === 'processing'
+          return isRunning && state?.runningTaskType === 'manual_asset_wait' && !!state?.runningTaskId
+        })
 
         panels.push({
           panelId,
@@ -79,6 +85,8 @@ export function useVideoPanelsProjection({
           videoUrl: panel.videoUrl || undefined,
           videoGenerationMode: panel.videoGenerationMode || undefined,
           videoTaskRunning: panelVideoState?.phase === 'queued' || panelVideoState?.phase === 'processing',
+          runningTaskId: manualState?.runningTaskId || null,
+          runningTaskType: manualState?.runningTaskType || null,
           videoErrorMessage:
             panelVideoState?.phase === 'failed'
               ? panelVideoState.lastError?.message || panel.videoErrorMessage || undefined

@@ -55,6 +55,8 @@ export interface CharacterAppearance {
   selectedIndex: number | null      // 用户选中的图片索引
   // 任务态字段（由 tasks + hook 派生，不再依赖数据库持久化）
   imageTaskRunning?: boolean
+  runningTaskId?: string | null
+  runningTaskType?: string | null
   imageErrorMessage?: string | null  // 图片生成错误消息
   lastError?: { code: string; message: string } | null  // 结构化错误（来自 task target state）
 }
@@ -92,6 +94,8 @@ export interface LocationImage {
   isSelected: boolean
   // 任务态字段（由 tasks + hook 派生，不再依赖数据库持久化）
   imageTaskRunning?: boolean
+  runningTaskId?: string | null
+  runningTaskType?: string | null
   imageErrorMessage?: string | null  // 图片生成错误消息
   lastError?: { code: string; message: string } | null  // 结构化错误（来自 task target state）
 }
@@ -185,6 +189,10 @@ export interface NovelPromotionPanel {
   // 任务态字段（由 tasks + hook 派生，不再依赖数据库持久化）
   imageTaskRunning?: boolean
   videoTaskRunning?: boolean
+  lipSyncTaskRunning?: boolean
+  runningTaskId?: string | null
+  runningTaskType?: string | null
+  imageTaskIntent?: string | null
   imageErrorMessage?: string | null  // 图片生成错误消息
 }
 

@@ -28,6 +28,7 @@ export const POST = apiHandler(async (
   const panelIndex = body?.panelIndex
   const voiceLineId = body?.voiceLineId
   const requestedLipSyncModel = typeof body?.lipSyncModel === 'string' ? body.lipSyncModel.trim() : ''
+  const manualMode = body?.manualMode === true
 
   if (!storyboardId || panelIndex === undefined || !voiceLineId) {
     throw new ApiError('INVALID_PARAMS')
@@ -64,6 +65,53 @@ export const POST = apiHandler(async (
   const payload = {
     ...body,
     lipSyncModel: resolvedLipSyncModel,
+  }
+
+  if (manualMode) {
+    const endpoint = `/api/novel-promotion/${projectId}/upload-panel-video`
+    const manualPayload: Record<string, unknown> = {
+      stage: 'manual_asset_wait',
+      stageLabel: '等待手动上传素材',
+      manualAsset: {
+        kind: 'video',
+        modelType: 'video',
+        modelKey: resolvedLipSyncModel,
+        items: [
+          {
+            key: 'lipsync',
+            label: '口型同步视频',
+            prompt: '',
+            upload: {
+              endpoint,
+              method: 'POST',
+              fileField: 'file',
+              fields: {
+                panelId: panel.id,
+                kind: 'lipsync',
+              },
+            },
+          },
+        ],
+        remainingKeys: ['lipsync'],
+        totalCount: 1,
+      },
+    }
+    const result = await submitTask({
+      userId: session.user.id,
+      locale,
+      requestId: getRequestId(request),
+      projectId,
+      type: TASK_TYPE.MANUAL_ASSET_WAIT,
+      targetType: 'NovelPromotionPanel',
+      targetId: panel.id,
+      payload: withTaskUiPayload(manualPayload, {
+        hasOutputAtStart: await hasPanelLipSyncOutput(panel.id),
+        intent: 'manual_upload',
+      }),
+      dedupeKey: `manual_asset_wait:lip_sync:${panel.id}:${voiceLineId}`,
+      billingInfo: null,
+    })
+    return NextResponse.json(result)
   }
 
   const result = await submitTask({

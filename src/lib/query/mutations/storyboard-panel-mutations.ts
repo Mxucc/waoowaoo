@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../keys'
 import { resolveTaskResponse } from '@/lib/task/client'
 import { resolveTaskErrorMessage } from '@/lib/task/error-message'
+import { emitManualAssetTaskCreated } from '@/lib/manual-assets/client'
 import {
     clearTaskTargetOverlay,
     upsertTaskTargetOverlay,
@@ -16,11 +17,21 @@ import {
 export function useRegenerateProjectPanelImage(projectId: string) {
     const queryClient = useQueryClient()
     return useMutation({
-        mutationFn: async ({ panelId, count }: { panelId: string; count?: number }) => {
+        mutationFn: async (variables: {
+            panelId: string
+            count?: number
+            manualMode?: boolean
+            openManualModal?: boolean
+        }) => {
+            const { panelId, count, manualMode } = variables
             const res = await fetch(`/api/novel-promotion/${projectId}/regenerate-panel-image`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept-Language': getPageLocale() },
-                body: JSON.stringify({ panelId, count: count ?? 1 }),
+                body: JSON.stringify({
+                    panelId,
+                    count: count ?? 1,
+                    ...(manualMode ? { manualMode: true } : {}),
+                }),
             })
             if (!res.ok) {
                 const error = await res.json().catch(() => ({}))
@@ -35,6 +46,13 @@ export function useRegenerateProjectPanelImage(projectId: string) {
                 throw new Error(resolveTaskErrorMessage(error, '重新生成失败'))
             }
             return res.json()
+        },
+        onSuccess: (data, variables) => {
+            if (!variables.manualMode || variables.openManualModal === false) return
+            const taskId = (data as { taskId?: unknown })?.taskId
+            if (typeof taskId === 'string' && taskId.trim()) {
+                emitManualAssetTaskCreated(taskId)
+            }
         },
         onMutate: ({ panelId }) => {
             upsertTaskTargetOverlay(queryClient, {

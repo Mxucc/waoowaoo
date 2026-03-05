@@ -8,6 +8,7 @@ import WorkspaceRunStreamConsoles from './components/WorkspaceRunStreamConsoles'
 import WorkspaceStageContent from './components/WorkspaceStageContent'
 import WorkspaceAssetLibraryModal from './components/WorkspaceAssetLibraryModal'
 import WorkspaceHeaderShell from './components/WorkspaceHeaderShell'
+import WorkspaceManualAssetModal from './components/WorkspaceManualAssetModal'
 import { WorkspaceStageRuntimeProvider } from './WorkspaceStageRuntimeContext'
 import { useNovelPromotionWorkspaceController } from './hooks/useNovelPromotionWorkspaceController'
 import type { NovelPromotionWorkspaceProps } from './types'
@@ -93,6 +94,8 @@ function NovelPromotionWorkspaceContent(props: NovelPromotionWorkspaceProps) {
           triggerGlobalAnalyze={vm.ui.triggerGlobalAnalyzeOnOpen}
           onGlobalAnalyzeComplete={() => vm.ui.setTriggerGlobalAnalyzeOnOpen(false)}
         />
+
+        <WorkspaceManualAssetModal />
 
         {vm.execution.showCreatingToast && (
           <ProgressToast show={true} message={vm.i18n.t('storyInput.creating')} step={vm.execution.transitionProgress.step || ''} />

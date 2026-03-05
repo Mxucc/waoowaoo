@@ -17,7 +17,9 @@ const withTaskLifecycleMock = vi.hoisted(() =>
 
 vi.mock('bullmq', () => ({
   Queue: class {
-    constructor(_name: string) {}
+    constructor(name: string) {
+      void name
+    }
 
     async add() {
       return { id: 'job-1' }

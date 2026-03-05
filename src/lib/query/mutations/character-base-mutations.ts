@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { logError as _ulogError } from '@/lib/logging/core'
 import { useRef } from 'react'
 import type { Character, Project } from '@/types/project'
+import { emitManualAssetTaskCreated } from '@/lib/manual-assets/client'
 import { queryKeys } from '../keys'
 import type { ProjectAssetsData } from '../hooks/useProjectAssets'
 import {
@@ -115,16 +116,30 @@ export function useGenerateProjectCharacterImage(projectId: string) {
         invalidateQueryTemplates(queryClient, [queryKeys.projectAssets.all(projectId)])
 
     return useMutation({
-        mutationFn: async ({ characterId, appearanceId }: { characterId: string; appearanceId: string }) => {
+        mutationFn: async (variables: {
+            characterId: string
+            appearanceId: string
+            manualMode?: boolean
+            openManualModal?: boolean
+        }) => {
+            const { characterId, appearanceId, manualMode } = variables
             return await requestJsonWithError(`/api/novel-promotion/${projectId}/generate-image`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     type: 'character',
                     id: characterId,
-                    appearanceId
+                    appearanceId,
+                    ...(manualMode ? { manualMode: true } : {}),
                 })
             }, 'Failed to generate image')
+        },
+        onSuccess: (data, variables) => {
+            if (!variables.manualMode || variables.openManualModal === false) return
+            const taskId = (data as { taskId?: unknown })?.taskId
+            if (typeof taskId === 'string' && taskId.trim()) {
+                emitManualAssetTaskCreated(taskId)
+            }
         },
         onMutate: ({ appearanceId }) => {
             upsertTaskTargetOverlay(queryClient, {

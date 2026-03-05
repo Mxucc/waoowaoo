@@ -13,6 +13,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { CharacterAppearance } from '@/types/project'
 import { useProjectAssets, useRefreshProjectAssets, useGenerateProjectCharacterImage, useGenerateProjectLocationImage, type Character } from '@/lib/query/hooks'
+import { useWorkspaceProvider } from '../../../WorkspaceProvider'
 import {
     createManualKeyBaseline,
     isAppearanceTaskRunning,
@@ -23,7 +24,7 @@ import {
 interface UseBatchGenerationProps {
     projectId: string
     // 🔥 V6.6：移除 onGenerateImage，内部使用 mutation hooks
-    handleGenerateImage?: (type: 'character' | 'location', id: string, appearanceId?: string) => Promise<void> | void
+    handleGenerateImage?: (type: 'character' | 'location', id: string, appearanceId?: string, openManualModal?: boolean) => Promise<void> | void
 }
 
 export function useBatchGeneration({
@@ -31,6 +32,7 @@ export function useBatchGeneration({
     handleGenerateImage: externalHandleGenerateImage
 }: UseBatchGenerationProps) {
     const t = useTranslations('assets')
+    const { shouldManual } = useWorkspaceProvider()
     // 🔥 直接订阅缓存 - 消除 props drilling
     const { data: assets } = useProjectAssets(projectId)
     const characters = useMemo(() => assets?.characters ?? [], [assets?.characters])
@@ -46,11 +48,21 @@ export function useBatchGeneration({
     // 🔥 内部图片生成函数
     const internalHandleGenerateImage = useCallback(async (type: 'character' | 'location', id: string, appearanceId?: string) => {
         if (type === 'character' && appearanceId) {
-            await generateCharacterImage.mutateAsync({ characterId: id, appearanceId })
+            await generateCharacterImage.mutateAsync({
+                characterId: id,
+                appearanceId,
+                manualMode: shouldManual('image', 'np.image.character'),
+                openManualModal: false,
+            })
         } else if (type === 'location') {
-            await generateLocationImage.mutateAsync({ locationId: id, imageIndex: 0 })
+            await generateLocationImage.mutateAsync({
+                locationId: id,
+                imageIndex: 0,
+                manualMode: shouldManual('image', 'np.image.location'),
+                openManualModal: false,
+            })
         }
-    }, [generateCharacterImage, generateLocationImage])
+    }, [generateCharacterImage, generateLocationImage, shouldManual])
 
     // 使用外部传入的函数或内部实现
     const handleGenerateImage = externalHandleGenerateImage || internalHandleGenerateImage
@@ -196,25 +208,26 @@ export function useBatchGeneration({
                 tasks.map(async (task) => {
                     let submitted = false
                     try {
-                        await handleGenerateImage(task.type, task.id, task.appearanceId)
+                        await handleGenerateImage(task.type, task.id, task.appearanceId, false)
                         submitted = true
                         setBatchProgress(prev => ({ ...prev, current: prev.current + 1 }))
                     } catch (error) {
                         _ulogError(`Failed to generate ${task.type} ${task.id}:`, error)
                         setBatchProgress(prev => ({ ...prev, current: prev.current + 1 }))
                     } finally {
-                        if (submitted) return
-                        setPendingRegenerationKeys(prev => {
-                            const next = new Set(prev)
-                            next.delete(task.key)
-                            return next
-                        })
-                        setPendingRegenerationBaselines(prev => {
-                            if (!prev.has(task.key)) return prev
-                            const next = new Map(prev)
-                            next.delete(task.key)
-                            return next
-                        })
+                        if (!submitted) {
+                            setPendingRegenerationKeys(prev => {
+                                const next = new Set(prev)
+                                next.delete(task.key)
+                                return next
+                            })
+                            setPendingRegenerationBaselines(prev => {
+                                if (!prev.has(task.key)) return prev
+                                const next = new Map(prev)
+                                next.delete(task.key)
+                                return next
+                            })
+                        }
                     }
                 })
             )
@@ -284,25 +297,26 @@ export function useBatchGeneration({
                 tasks.map(async (task) => {
                     let submitted = false
                     try {
-                        await handleGenerateImage(task.type, task.id, task.appearanceId)
+                        await handleGenerateImage(task.type, task.id, task.appearanceId, false)
                         submitted = true
                         setBatchProgress(prev => ({ ...prev, current: prev.current + 1 }))
                     } catch (error) {
                         _ulogError(`Failed to generate ${task.type} ${task.id}:`, error)
                         setBatchProgress(prev => ({ ...prev, current: prev.current + 1 }))
                     } finally {
-                        if (submitted) return
-                        setPendingRegenerationKeys(prev => {
-                            const next = new Set(prev)
-                            next.delete(task.key)
-                            return next
-                        })
-                        setPendingRegenerationBaselines(prev => {
-                            if (!prev.has(task.key)) return prev
-                            const next = new Map(prev)
-                            next.delete(task.key)
-                            return next
-                        })
+                        if (!submitted) {
+                            setPendingRegenerationKeys(prev => {
+                                const next = new Set(prev)
+                                next.delete(task.key)
+                                return next
+                            })
+                            setPendingRegenerationBaselines(prev => {
+                                if (!prev.has(task.key)) return prev
+                                const next = new Map(prev)
+                                next.delete(task.key)
+                                return next
+                            })
+                        }
                     }
                 })
             )

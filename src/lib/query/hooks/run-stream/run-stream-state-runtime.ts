@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { RunStreamEvent } from '@/lib/novel-promotion/run-stream/types'
+import type { SSEEvent } from '@/lib/task/types'
 import { applyRunStreamEvent } from './state-machine'
 import { clearRunSnapshot, loadRunSnapshot, saveRunSnapshot } from './snapshot'
 import { subscribeRecoveredRun } from './recovered-run-subscription'
 import { executeRunRequest } from './run-request-executor'
 import { deriveRunStreamView } from './run-stream-view'
+import { mapTaskSSEEventToRunEvents } from './event-parser'
 import type { RunResult, RunState, UseRunStreamStateOptions } from './types'
 
 export type {
@@ -30,6 +32,7 @@ export function useRunStreamState<TParams>(options: UseRunStreamStateOptions<TPa
     buildRequestBody,
     validateParams,
     resolveActiveRunId,
+    subscribeTaskEvents,
   } = options
   const [runState, setRunState] = useState<RunState | null>(null)
   const runStateRef = useRef<RunState | null>(null)
@@ -114,6 +117,21 @@ export function useRunStreamState<TParams>(options: UseRunStreamStateOptions<TPa
       cancelled = true
     }
   }, [projectId, storageKey, storageScopeKey])
+
+  useEffect(() => {
+    if (!projectId) return
+    if (!subscribeTaskEvents) return
+    const runId = runState?.runId || ''
+    if (!runId || runState?.status !== 'running') return
+
+    return subscribeTaskEvents((event: SSEEvent) => {
+      if (event.taskId !== runId) return
+      const runEvents = mapTaskSSEEventToRunEvents(event)
+      for (const runEvent of runEvents) {
+        applyEvent(runEvent)
+      }
+    })
+  }, [applyEvent, projectId, runState?.runId, runState?.status, subscribeTaskEvents])
 
   useEffect(() => {
     if (!projectId || !isRecoveredRunning || isLiveRunning) return

@@ -1,6 +1,7 @@
 'use client'
 
 import { useRunStreamState, type RunResult } from './useRunStreamState'
+import type { UseRunStreamStateOptions } from './run-stream/types'
 import { TASK_TYPE } from '@/lib/task/types'
 
 export type StoryToScriptRunParams = {
@@ -17,14 +18,16 @@ export type StoryToScriptRunResult = RunResult
 type UseStoryToScriptRunStreamOptions = {
   projectId: string
   episodeId?: string | null
+  subscribeTaskEvents?: UseRunStreamStateOptions<StoryToScriptRunParams>['subscribeTaskEvents']
 }
 
-export function useStoryToScriptRunStream({ projectId, episodeId }: UseStoryToScriptRunStreamOptions) {
+export function useStoryToScriptRunStream({ projectId, episodeId, subscribeTaskEvents }: UseStoryToScriptRunStreamOptions) {
   return useRunStreamState<StoryToScriptRunParams>({
     projectId,
     endpoint: (pid) => `/api/novel-promotion/${pid}/story-to-script-stream`,
     storageKeyPrefix: 'novel-promotion:story-to-script-run',
     storageScopeKey: episodeId || undefined,
+    subscribeTaskEvents,
     resolveActiveRunId: async ({ projectId: pid, storageScopeKey }) => {
       if (!storageScopeKey) return null
       const search = new URLSearchParams({

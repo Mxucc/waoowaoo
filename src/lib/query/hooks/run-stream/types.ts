@@ -1,4 +1,5 @@
 import type { RunStepStatus, RunStreamLane, RunStreamStatus } from '@/lib/novel-promotion/run-stream/types'
+import type { SSEEvent } from '@/lib/task/types'
 
 export type RunStepState = {
   id: string
@@ -58,4 +59,6 @@ export type UseRunStreamStateOptions<TParams> = {
   buildRequestBody: (params: TParams) => Record<string, unknown>
   validateParams?: (params: TParams) => void
   resolveActiveRunId?: (context: { projectId: string; storageScopeKey?: string }) => Promise<string | null>
+
+  subscribeTaskEvents?: (listener: (event: SSEEvent) => void) => () => void
 }

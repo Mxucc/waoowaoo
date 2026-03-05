@@ -26,6 +26,7 @@ export default function StoryboardStageShell({
     <div className="space-y-6 pb-20">
       {children}
       <button
+        type="button"
         onClick={onNext}
         disabled={isNextDisabled}
         className="glass-btn-base glass-btn-primary fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-2xl px-6 py-3 text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"

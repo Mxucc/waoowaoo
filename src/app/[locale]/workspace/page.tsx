@@ -56,6 +56,7 @@ export default function WorkspacePage() {
     name: '',
     description: ''
   })
+  const [defaultManualAssetMode, setDefaultManualAssetMode] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editFormData, setEditFormData] = useState({
@@ -144,6 +145,19 @@ export default function WorkspacePage() {
       })
 
       if (response.ok) {
+        const data = await response.json().catch(() => null)
+        const createdProjectId = data && typeof data === 'object' && typeof (data as { project?: { id?: unknown } }).project?.id === 'string'
+          ? (data as { project: { id: string } }).project.id
+          : ''
+
+        if (defaultManualAssetMode && createdProjectId) {
+          try {
+            window.localStorage.setItem(`manual-asset-mode:${createdProjectId}`, '1')
+          } catch (error) {
+            _ulogError('保存手动模式设置失败:', error)
+          }
+        }
+
         // 创建成功后刷新第一页
         setSearchQuery('')
         setSearchInput('')
@@ -151,6 +165,7 @@ export default function WorkspacePage() {
         fetchProjects(1, '')
         setShowCreateModal(false)
         setFormData({ name: '', description: '' })
+        setDefaultManualAssetMode(false)
       } else {
         alert(t('createFailed'))
       }
@@ -286,6 +301,7 @@ export default function WorkspacePage() {
               className="glass-input-base w-64 px-3 py-2"
             />
             <button
+              type="button"
               onClick={handleSearch}
               className="glass-btn-base glass-btn-primary px-4 py-2"
             >
@@ -293,6 +309,7 @@ export default function WorkspacePage() {
             </button>
             {searchQuery && (
               <button
+                type="button"
                 onClick={() => {
                   setSearchInput('')
                   setSearchQuery('')
@@ -309,7 +326,8 @@ export default function WorkspacePage() {
         {/* Projects Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {/* New Project Card */}
-          <div
+          <button
+            type="button"
             onClick={() => setShowCreateModal(true)}
             className="glass-surface p-6 cursor-pointer group flex items-center justify-center bg-gradient-to-br from-blue-500/5 via-cyan-500/5 to-blue-600/5 hover:from-blue-500/10 hover:via-cyan-500/10 hover:to-blue-600/10 transition-all duration-300"
           >
@@ -319,13 +337,13 @@ export default function WorkspacePage() {
               </div>
               <span className="text-sm font-medium text-[var(--glass-text-secondary)] group-hover:text-[var(--glass-text-primary)] transition-colors">{t('newProject')}</span>
             </div>
-          </div>
+          </button>
 
           {/* Project Cards */}
           {loading ? (
             // Loading skeleton
-            Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="glass-surface p-6 animate-pulse">
+            Array.from({ length: 3 }, (_, index) => `skeleton-${index}`).map((key) => (
+              <div key={key} className="glass-surface p-6 animate-pulse">
                 <div className="h-4 bg-[var(--glass-bg-muted)] rounded mb-3"></div>
                 <div className="h-3 bg-[var(--glass-bg-muted)] rounded mb-2"></div>
                 <div className="h-3 bg-[var(--glass-bg-muted)] rounded w-2/3"></div>
@@ -345,6 +363,7 @@ export default function WorkspacePage() {
                   {/* 操作按钮 */}
                   <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                     <button
+                      type="button"
                       onClick={(e) => openEditModal(project, e)}
                       className="glass-btn-base glass-btn-secondary p-2 rounded-lg transition-colors"
                       title={t('editProject')}
@@ -352,6 +371,7 @@ export default function WorkspacePage() {
                       <AppIcon name="editSquare" className="w-4 h-4 text-[var(--glass-tone-info-fg)]" />
                     </button>
                     <button
+                      type="button"
                       onClick={(e) => openDeleteConfirm(project, e)}
                       className="glass-btn-base glass-btn-secondary p-2 rounded-lg transition-colors"
                       title={t('deleteProject')}
@@ -454,6 +474,7 @@ export default function WorkspacePage() {
             </p>
             {!searchQuery && (
               <button
+                type="button"
                 onClick={() => setShowCreateModal(true)}
                 className="glass-btn-base glass-btn-primary px-6 py-3"
               >
@@ -467,6 +488,7 @@ export default function WorkspacePage() {
         {!loading && pagination.totalPages > 1 && (
           <div className="mt-8 flex items-center justify-center gap-2">
             <button
+              type="button"
               onClick={() => handlePageChange(pagination.page - 1)}
               disabled={pagination.page <= 1}
               className="glass-btn-base glass-btn-secondary px-3 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -489,6 +511,7 @@ export default function WorkspacePage() {
                     <span className="px-2 text-[var(--glass-text-tertiary)]">...</span>
                   )}
                   <button
+                    type="button"
                     onClick={() => handlePageChange(page)}
                     className={`glass-btn-base px-4 py-2 ${page === pagination.page
                       ? 'glass-btn-primary'
@@ -501,6 +524,7 @@ export default function WorkspacePage() {
               ))}
 
             <button
+              type="button"
               onClick={() => handlePageChange(pagination.page + 1)}
               disabled={pagination.page >= pagination.totalPages}
               className="glass-btn-base glass-btn-secondary px-3 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -534,7 +558,6 @@ export default function WorkspacePage() {
                   placeholder={t('projectNamePlaceholder')}
                   maxLength={100}
                   required
-                  autoFocus
                 />
               </div>
               <div className="mb-6">
@@ -551,12 +574,23 @@ export default function WorkspacePage() {
                   maxLength={500}
                 />
               </div>
+              <div className="mb-6">
+                <label className="flex items-center gap-3 text-sm text-[var(--glass-text-secondary)]">
+                  <input
+                    type="checkbox"
+                    checked={defaultManualAssetMode}
+                    onChange={(e) => setDefaultManualAssetMode(e.target.checked)}
+                  />
+                  <span>默认启用手动生成素材模式</span>
+                </label>
+              </div>
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => {
                     setShowCreateModal(false)
                     setFormData({ name: '', description: '' })
+                    setDefaultManualAssetMode(false)
                   }}
                   className="glass-btn-base glass-btn-secondary px-4 py-2"
                   disabled={createLoading}

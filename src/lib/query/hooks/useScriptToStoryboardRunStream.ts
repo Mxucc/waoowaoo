@@ -1,6 +1,7 @@
 'use client'
 
 import { useRunStreamState, type RunResult } from './useRunStreamState'
+import type { UseRunStreamStateOptions } from './run-stream/types'
 import { TASK_TYPE } from '@/lib/task/types'
 
 export type ScriptToStoryboardRunParams = {
@@ -16,14 +17,16 @@ export type ScriptToStoryboardRunResult = RunResult
 type UseScriptToStoryboardRunStreamOptions = {
   projectId: string
   episodeId?: string | null
+  subscribeTaskEvents?: UseRunStreamStateOptions<ScriptToStoryboardRunParams>['subscribeTaskEvents']
 }
 
-export function useScriptToStoryboardRunStream({ projectId, episodeId }: UseScriptToStoryboardRunStreamOptions) {
+export function useScriptToStoryboardRunStream({ projectId, episodeId, subscribeTaskEvents }: UseScriptToStoryboardRunStreamOptions) {
   return useRunStreamState<ScriptToStoryboardRunParams>({
     projectId,
     endpoint: (pid) => `/api/novel-promotion/${pid}/script-to-storyboard-stream`,
     storageKeyPrefix: 'novel-promotion:script-to-storyboard-run',
     storageScopeKey: episodeId || undefined,
+    subscribeTaskEvents,
     resolveActiveRunId: async ({ projectId: pid, storageScopeKey }) => {
       if (!storageScopeKey) return null
       const search = new URLSearchParams({

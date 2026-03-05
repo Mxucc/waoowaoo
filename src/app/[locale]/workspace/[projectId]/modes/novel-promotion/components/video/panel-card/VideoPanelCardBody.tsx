@@ -3,6 +3,7 @@ import { resolveTaskPresentationState } from '@/lib/task/presentation'
 import { ModelCapabilityDropdown } from '@/components/ui/config-modals/ModelCapabilityDropdown'
 import { AppIcon } from '@/components/ui/icons'
 import type { VideoPanelRuntime } from './hooks/useVideoPanelActions'
+import { useWorkspaceProvider } from '../../../WorkspaceProvider'
 
 interface VideoPanelCardBodyProps {
   runtime: VideoPanelRuntime
@@ -24,6 +25,11 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
     lipSync,
     computed,
   } = runtime
+  const { openManualAssetModal } = useWorkspaceProvider()
+  const manualWaitTaskId =
+    panel.runningTaskType === 'manual_asset_wait' && panel.runningTaskId
+      ? panel.runningTaskId
+      : null
   const safeTranslate = (key: string | undefined, fallback = ''): string => {
     if (!key) return fallback
     try {
@@ -77,7 +83,11 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-medium text-[var(--glass-text-tertiary)]">{t('promptModal.promptLabel')}</span>
               {!promptEditor.isEditing && (
-                <button onClick={promptEditor.handleStartEdit} className="text-[var(--glass-text-tertiary)] hover:text-[var(--glass-tone-info-fg)] transition-colors p-0.5">
+                <button
+                  type="button"
+                  onClick={promptEditor.handleStartEdit}
+                  className="text-[var(--glass-text-tertiary)] hover:text-[var(--glass-tone-info-fg)] transition-colors p-0.5"
+                >
                   <AppIcon name="edit" className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -88,20 +98,37 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
                 <textarea
                   value={promptEditor.editingPrompt}
                   onChange={(event) => promptEditor.setEditingPrompt(event.target.value)}
-                  autoFocus
                   className="w-full text-xs p-2 pr-16 border border-[var(--glass-stroke-focus)] rounded-lg bg-[var(--glass-bg-surface)] text-[var(--glass-text-secondary)] focus:outline-none focus:ring-1 focus:ring-[var(--glass-tone-info-fg)] resize-none"
                   rows={3}
                   placeholder={t('promptModal.placeholder')}
                 />
                 <div className="absolute right-1 top-1 flex flex-col gap-1">
-                  <button onClick={promptEditor.handleSave} disabled={promptEditor.isSavingPrompt} className="px-2 py-1 text-[10px] bg-[var(--glass-accent-from)] text-white rounded">{promptEditor.isSavingPrompt ? '...' : t('panelCard.save')}</button>
-                  <button onClick={promptEditor.handleCancelEdit} disabled={promptEditor.isSavingPrompt} className="px-2 py-1 text-[10px] bg-[var(--glass-bg-muted)] text-[var(--glass-text-secondary)] rounded">{t('panelCard.cancel')}</button>
+                  <button
+                    type="button"
+                    onClick={promptEditor.handleSave}
+                    disabled={promptEditor.isSavingPrompt}
+                    className="px-2 py-1 text-[10px] bg-[var(--glass-accent-from)] text-white rounded"
+                  >
+                    {promptEditor.isSavingPrompt ? '...' : t('panelCard.save')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={promptEditor.handleCancelEdit}
+                    disabled={promptEditor.isSavingPrompt}
+                    className="px-2 py-1 text-[10px] bg-[var(--glass-bg-muted)] text-[var(--glass-text-secondary)] rounded"
+                  >
+                    {t('panelCard.cancel')}
+                  </button>
                 </div>
               </div>
             ) : (
-              <div onClick={promptEditor.handleStartEdit} className="text-xs p-2 border border-[var(--glass-stroke-base)] rounded-lg bg-[var(--glass-bg-muted)] text-[var(--glass-text-secondary)] cursor-pointer">
+              <button
+                type="button"
+                onClick={promptEditor.handleStartEdit}
+                className="w-full text-left text-xs p-2 border border-[var(--glass-stroke-base)] rounded-lg bg-[var(--glass-bg-muted)] text-[var(--glass-text-secondary)] cursor-pointer"
+              >
                 {promptEditor.localPrompt || <span className="text-[var(--glass-text-tertiary)] italic">{t('panelCard.clickToEditPrompt')}</span>}
-              </div>
+              </button>
             )}
 
             {layout.isLinked && layout.nextPanel ? (() => {
@@ -109,6 +136,7 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
               return (
                 <div className="mt-2 flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={() => actions.onGenerateFirstLastFrame(
                       panel.storyboardId,
                       panel.panelIndex,
@@ -129,6 +157,15 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
                   >
                     {isFirstLastFrameGenerated ? t('firstLastFrame.generated') : taskStatus.isVideoTaskRunning ? taskStatus.taskRunningVideoLabel : t('firstLastFrame.generate')}
                   </button>
+                  {manualWaitTaskId && (
+                    <button
+                      type="button"
+                      onClick={() => openManualAssetModal(manualWaitTaskId)}
+                      className="flex-shrink-0 min-w-[90px] py-2 px-3 text-sm font-medium rounded-lg shadow-sm transition-all bg-[var(--glass-tone-success-fg)] text-white"
+                    >
+                      继续上传
+                    </button>
+                  )}
                   <div className="flex-1 min-w-0">
                     <ModelCapabilityDropdown
                       compact
@@ -152,6 +189,7 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
               <>
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={() =>
                       actions.onGenerateVideo(
                         panel.storyboardId,
@@ -171,6 +209,15 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
                   >
                     {panel.videoUrl ? t('stage.hasSynced') : taskStatus.isVideoTaskRunning ? taskStatus.taskRunningVideoLabel : t('panelCard.generateVideo')}
                   </button>
+                  {manualWaitTaskId && (
+                    <button
+                      type="button"
+                      onClick={() => openManualAssetModal(manualWaitTaskId)}
+                      className="flex-shrink-0 min-w-[90px] py-2 px-3 text-sm font-medium rounded-lg shadow-sm transition-all bg-[var(--glass-tone-success-fg)] text-white"
+                    >
+                      继续上传
+                    </button>
+                  )}
                   <div className="flex-1 min-w-0">
                     <ModelCapabilityDropdown
                       compact
@@ -196,6 +243,7 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
                   <div className="mt-2">
                     <div className="flex gap-2">
                       <button
+                        type="button"
                         onClick={computed.canLipSync ? lipSync.handleStartLipSync : undefined}
                         disabled={!computed.canLipSync || taskStatus.isLipSyncTaskRunning || lipSync.executingLipSync}
                         className="flex-1 py-1.5 text-xs rounded-lg transition-all flex items-center justify-center gap-1 bg-[var(--glass-accent-from)] text-white disabled:opacity-50"
@@ -208,11 +256,27 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
                       </button>
 
                       {(taskStatus.isLipSyncTaskRunning || panel.lipSyncVideoUrl) && voiceManager.hasMatchedAudio && (
-                        <button onClick={lipSync.handleStartLipSync} disabled={lipSync.executingLipSync} className="flex-shrink-0 px-3 py-1.5 text-xs rounded-lg bg-[var(--glass-tone-warning-fg)] text-white">
+                        <button
+                          type="button"
+                          onClick={lipSync.handleStartLipSync}
+                          disabled={lipSync.executingLipSync}
+                          className="flex-shrink-0 px-3 py-1.5 text-xs rounded-lg bg-[var(--glass-tone-warning-fg)] text-white"
+                        >
                           {t('panelCard.redo')}
                         </button>
                       )}
                     </div>
+                    {manualWaitTaskId && taskStatus.isLipSyncTaskRunning && (
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          onClick={() => openManualAssetModal(manualWaitTaskId)}
+                          className="w-full py-1.5 text-xs rounded-lg bg-[var(--glass-tone-success-fg)] text-white"
+                        >
+                          继续上传
+                        </button>
+                      </div>
+                    )}
 
                     {voiceManager.audioGenerateError && (
                       <div className="mt-1 p-1.5 bg-[var(--glass-tone-danger-bg)] border border-[var(--glass-stroke-danger)] rounded text-[10px] text-[var(--glass-tone-danger-fg)]">
@@ -232,6 +296,7 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
                             <div key={voiceLine.id} className="flex items-start gap-1.5 p-1.5 bg-[var(--glass-bg-muted)] rounded text-[10px]">
                               {voiceLine.audioUrl ? (
                                 <button
+                                  type="button"
                                   onClick={(event) => {
                                     event.stopPropagation()
                                     voiceManager.handlePlayVoiceLine(voiceLine)
@@ -243,6 +308,7 @@ export default function VideoPanelCardBody({ runtime }: VideoPanelCardBodyProps)
                                 </button>
                               ) : (
                                 <button
+                                  type="button"
                                   onClick={(event) => {
                                     event.stopPropagation()
                                     void voiceManager.handleGenerateAudio(voiceLine)

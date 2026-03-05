@@ -8,7 +8,10 @@ type EffectCleanup = (() => void) | void
 
 const runtime = vi.hoisted(() => ({
   queryClient: {
-    invalidateQueries: vi.fn(async (_arg?: InvalidateArg) => undefined),
+    invalidateQueries: vi.fn(async (_arg?: InvalidateArg) => {
+      void _arg
+      return undefined
+    }),
   },
   effectCleanup: null as EffectCleanup,
   scheduledTimers: [] as Array<() => void>,

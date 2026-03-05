@@ -62,6 +62,7 @@ export const POST = apiHandler(async (
   const lineId = typeof body?.lineId === 'string' ? body.lineId : ''
   const audioModel = typeof body?.audioModel === 'string' ? body.audioModel.trim() : ''
   const all = body?.all === true
+  const manualMode = body?.manualMode === true
 
   if (!episodeId) {
     throw new ApiError('INVALID_PARAMS')
@@ -149,9 +150,62 @@ export const POST = apiHandler(async (
         lineId: line.id,
         maxSeconds: estimateVoiceLineMaxSeconds(line.content),
         ...(audioModel ? { audioModel } : {})}
+
+      if (manualMode) {
+        const endpoint = `/api/novel-promotion/${projectId}/upload-voice-line-audio`
+        const manualPayload: Record<string, unknown> = {
+          stage: 'manual_asset_wait',
+          stageLabel: '等待手动上传素材',
+          manualAsset: {
+            kind: 'audio',
+            modelType: 'audio',
+            modelKey: audioModel || null,
+            items: [
+              {
+                key: 'audio',
+                label: line.speaker,
+                prompt: line.content,
+                upload: {
+                  endpoint,
+                  method: 'POST',
+                  fileField: 'file',
+                  fields: {
+                    episodeId,
+                    lineId: line.id,
+                  },
+                },
+              },
+            ],
+            remainingKeys: ['audio'],
+            totalCount: 1,
+          },
+        }
+
+        const result = await submitTask({
+          userId: session.user.id,
+          locale,
+          requestId: getRequestId(request),
+          projectId,
+          episodeId,
+          type: TASK_TYPE.MANUAL_ASSET_WAIT,
+          targetType: 'NovelPromotionVoiceLine',
+          targetId: line.id,
+          payload: withTaskUiPayload(manualPayload, {
+            hasOutputAtStart: await hasVoiceLineAudioOutput(line.id),
+            intent: 'manual_upload',
+          }),
+          dedupeKey: `manual_asset_wait:voice_line:${line.id}:audio`,
+          billingInfo: null,
+        })
+
+        return {
+          lineId: line.id,
+          taskId: result.taskId,
+        }
+      }
       const result = await submitTask({
         userId: session.user.id,
-    locale,
+        locale,
         requestId: getRequestId(request),
         projectId,
         episodeId,

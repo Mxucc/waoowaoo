@@ -56,7 +56,7 @@ function buildPanelTargets(storyboards: NovelPromotionStoryboard[], type: 'image
           key: `panel-image:${panel.id}`,
           targetType: 'NovelPromotionPanel',
           targetId: panel.id,
-          types: ['image_panel', 'panel_variant', 'modify_asset_image'],
+          types: ['image_panel', 'panel_variant', 'modify_asset_image', 'manual_asset_wait'],
           resource: 'image',
           hasOutput: !!panel.imageUrl,
         })
@@ -65,7 +65,7 @@ function buildPanelTargets(storyboards: NovelPromotionStoryboard[], type: 'image
           key: `panel-video:${panel.id}`,
           targetType: 'NovelPromotionPanel',
           targetId: panel.id,
-          types: ['video_panel'],
+          types: ['video_panel', 'manual_asset_wait'],
           resource: 'video',
           hasOutput: !!panel.videoUrl,
         })
@@ -74,7 +74,7 @@ function buildPanelTargets(storyboards: NovelPromotionStoryboard[], type: 'image
           key: `panel-lip:${panel.id}`,
           targetType: 'NovelPromotionPanel',
           targetId: panel.id,
-          types: ['lip_sync'],
+          types: ['lip_sync', 'manual_asset_wait'],
           resource: 'video',
           hasOutput: !!panel.lipSyncVideoUrl,
         })
@@ -137,12 +137,22 @@ export function useStoryboardTaskAwareStoryboards({
       panels: (storyboard.panels || []).map((panel) => {
         const panelImageTaskState = panelImageStates.getTaskState(`panel-image:${panel.id}`)
         const panelImageRunning = isRunningPhase(panelImageTaskState?.phase)
+        const panelVideoTaskState = panelVideoStates.getTaskState(`panel-video:${panel.id}`)
+        const panelLipSyncTaskState = panelLipSyncStates.getTaskState(`panel-lip:${panel.id}`)
+        const manualState = [panelImageTaskState, panelVideoTaskState, panelLipSyncTaskState].find(
+          (state) =>
+            isRunningPhase(state?.phase) &&
+            state?.runningTaskType === 'manual_asset_wait' &&
+            !!state?.runningTaskId,
+        )
         return {
           ...panel,
           imageTaskRunning: panelImageRunning,
           imageTaskIntent: panelImageTaskState?.intent,
-          videoTaskRunning: isRunningPhase(panelVideoStates.getTaskState(`panel-video:${panel.id}`)?.phase),
-          lipSyncTaskRunning: isRunningPhase(panelLipSyncStates.getTaskState(`panel-lip:${panel.id}`)?.phase),
+          videoTaskRunning: isRunningPhase(panelVideoTaskState?.phase),
+          lipSyncTaskRunning: isRunningPhase(panelLipSyncTaskState?.phase),
+          runningTaskId: manualState?.runningTaskId || null,
+          runningTaskType: manualState?.runningTaskType || null,
         }
       }),
     }))

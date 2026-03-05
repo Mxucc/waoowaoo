@@ -140,6 +140,48 @@ describe('worker clips-build behavior', () => {
     })
   })
 
+  it('start=end 边界也能匹配成功', async () => {
+    prismaMock.novelPromotionEpisode.findUnique.mockResolvedValue({
+      id: 'episode-1',
+      name: '第一集',
+      novelPromotionProjectId: 'np-project-1',
+      novelText: '你好，我叫梁非凡。后面还有内容。',
+    })
+
+    llmMock.getCompletionContent.mockReturnValue(
+      JSON.stringify([
+        {
+          start: '你好，我叫梁非凡',
+          end: '你好，我叫梁非凡',
+          summary: 'first clip',
+          location: 'Old Town',
+          characters: ['Hero'],
+        },
+      ]),
+    )
+
+    const job = buildJob({ episodeId: 'episode-1' })
+    const result = await handleClipsBuildTask(job)
+
+    expect(result).toEqual({
+      episodeId: 'episode-1',
+      count: 1,
+    })
+
+    expect(prismaMock.novelPromotionClip.create).toHaveBeenCalledWith({
+      data: {
+        episodeId: 'episode-1',
+        startText: '你好，我叫梁非凡',
+        endText: '你好，我叫梁非凡',
+        summary: 'first clip',
+        location: 'Old Town',
+        characters: JSON.stringify(['Hero']),
+        content: '你好，我叫梁非凡',
+      },
+      select: { id: true },
+    })
+  })
+
   it('AI boundaries cannot be matched -> explicit boundary error', async () => {
     llmMock.getCompletionContent.mockReturnValue(
       JSON.stringify([

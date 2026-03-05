@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../keys'
 import { checkApiResponse } from '@/lib/error-handler'
 import { resolveTaskErrorMessage } from '@/lib/task/error-message'
+import { emitManualAssetTaskCreated } from '@/lib/manual-assets/client'
 import { clearTaskTargetOverlay, upsertTaskTargetOverlay } from '../task-target-overlay'
 import type { MediaRef } from '@/types/project'
 
@@ -84,18 +85,30 @@ export function useRegeneratePanelImage(projectId: string | null, episodeId: str
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async ({ panelId }: { panelId: string }) => {
+        mutationFn: async (variables: {
+            panelId: string
+            manualMode?: boolean
+            openManualModal?: boolean
+        }) => {
+            const { panelId, manualMode } = variables
             if (!projectId) throw new Error('Project ID is required')
             const res = await fetch(`/api/novel-promotion/${projectId}/regenerate-panel-image`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ panelId }),
+                body: JSON.stringify({ panelId, ...(manualMode ? { manualMode: true } : {}) }),
             })
             if (!res.ok) {
                 const error = await res.json()
                 throw new Error(resolveTaskErrorMessage(error, 'Failed to regenerate'))
             }
             return res.json()
+        },
+        onSuccess: (data, variables) => {
+            if (!variables.manualMode || variables.openManualModal === false) return
+            const taskId = (data as { taskId?: unknown })?.taskId
+            if (typeof taskId === 'string' && taskId.trim()) {
+                emitManualAssetTaskCreated(taskId)
+            }
         },
         onMutate: async () => {
             if (!projectId) return
@@ -158,6 +171,8 @@ export function useGenerateVideo(projectId: string | null, episodeId: string | n
             panelId?: string
             videoModel: string
             generationOptions?: VideoGenerationOptions
+            manualMode?: boolean
+            openManualModal?: boolean
             firstLastFrame?: {
                 lastFrameStoryboardId: string
                 lastFramePanelIndex: number
@@ -179,6 +194,7 @@ export function useGenerateVideo(projectId: string | null, episodeId: string | n
                 }
                 videoModel: string
                 generationOptions?: VideoGenerationOptions
+                manualMode?: boolean
             } = {
                 storyboardId: params.storyboardId,
                 panelIndex: params.panelIndex,
@@ -194,6 +210,10 @@ export function useGenerateVideo(projectId: string | null, episodeId: string | n
                 requestBody.generationOptions = params.generationOptions
             }
 
+            if (params.manualMode) {
+                requestBody.manualMode = true
+            }
+
             const res = await fetch(`/api/novel-promotion/${projectId}/generate-video`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -202,6 +222,13 @@ export function useGenerateVideo(projectId: string | null, episodeId: string | n
             // 🔥 使用统一错误处理
             await checkApiResponse(res)
             return res.json()
+        },
+        onSuccess: (data, variables) => {
+            if (!variables.manualMode || variables.openManualModal === false) return
+            const taskId = (data as { taskId?: unknown })?.taskId
+            if (typeof taskId === 'string' && taskId.trim()) {
+                emitManualAssetTaskCreated(taskId)
+            }
         },
         onMutate: async ({ panelId }) => {
             if (!projectId) return
@@ -241,7 +268,7 @@ export function useBatchGenerateVideos(projectId: string | null, episodeId: stri
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async (params: BatchVideoGenerationParams) => {
+        mutationFn: async (params: BatchVideoGenerationParams & { manualMode?: boolean }) => {
             if (!projectId) throw new Error('Project ID is required')
             if (!episodeId) throw new Error('Episode ID is required')
 
@@ -250,6 +277,7 @@ export function useBatchGenerateVideos(projectId: string | null, episodeId: stri
                 episodeId: string
                 videoModel: string
                 generationOptions?: VideoGenerationOptions
+                manualMode?: boolean
             } = {
                 all: true,
                 episodeId,
@@ -257,6 +285,10 @@ export function useBatchGenerateVideos(projectId: string | null, episodeId: stri
             }
             if (params.generationOptions && typeof params.generationOptions === 'object') {
                 requestBody.generationOptions = params.generationOptions
+            }
+
+            if (params.manualMode) {
+                requestBody.manualMode = true
             }
 
             const res = await fetch(`/api/novel-promotion/${projectId}/generate-video`, {
@@ -333,6 +365,8 @@ export function useLipSync(projectId: string | null, episodeId: string | null) {
             panelIndex: number
             voiceLineId: string
             panelId?: string
+            manualMode?: boolean
+            openManualModal?: boolean
         }) => {
             const res = await fetch(`/api/novel-promotion/${projectId}/lip-sync`, {
                 method: 'POST',
@@ -340,7 +374,8 @@ export function useLipSync(projectId: string | null, episodeId: string | null) {
                 body: JSON.stringify({
                     storyboardId: params.storyboardId,
                     panelIndex: params.panelIndex,
-                    voiceLineId: params.voiceLineId
+                    voiceLineId: params.voiceLineId,
+                    ...(params.manualMode ? { manualMode: true } : {}),
                 })
             })
 
@@ -350,6 +385,13 @@ export function useLipSync(projectId: string | null, episodeId: string | null) {
             }
 
             return res.json()
+        },
+        onSuccess: (data, variables) => {
+            if (!variables.manualMode || variables.openManualModal === false) return
+            const taskId = (data as { taskId?: unknown })?.taskId
+            if (typeof taskId === 'string' && taskId.trim()) {
+                emitManualAssetTaskCreated(taskId)
+            }
         },
         onMutate: async ({ panelId }) => {
             if (!projectId) return

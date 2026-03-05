@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl'
 import { useState, useRef } from 'react'
 import { Character, CharacterAppearance } from '@/types/project'
 import { shouldShowError } from '@/lib/error-utils'
+import { useWorkspaceProvider } from '../../WorkspaceProvider'
 import VoiceSettings from './VoiceSettings'
 import { useUploadProjectCharacterImage } from '@/lib/query/mutations'
 import { resolveTaskPresentationState } from '@/lib/task/presentation'
@@ -68,6 +69,7 @@ export default function CharacterCard({
   onVoiceDesign,
   onVoiceSelectFromHub
 }: CharacterCardProps) {
+  const { openManualAssetModal } = useWorkspaceProvider()
   // 🔥 使用 mutation
   const uploadImage = useUploadProjectCharacterImage(projectId)
   const t = useTranslations('assets')
@@ -167,6 +169,10 @@ export default function CharacterCard({
     key.startsWith(`character-${character.id}-${appearance.appearanceIndex}`)
   )
   const appearanceTaskRunning = !!appearance.imageTaskRunning
+  const manualWaitTaskId =
+    appearance.runningTaskType === 'manual_asset_wait' && appearance.runningTaskId
+      ? appearance.runningTaskId
+      : null
   const appearanceTaskPresentation = appearanceTaskRunning
     ? resolveTaskPresentationState({
       phase: 'processing',
@@ -211,6 +217,7 @@ export default function CharacterCard({
     const selectionActions = (
       <>
         <button
+          type="button"
           onClick={onRegenerate}
           disabled={isAppearanceTaskRunning || isAnyTaskRunning || uploadImage.isPending}
           className="w-6 h-6 rounded hover:bg-[var(--glass-tone-info-bg)] flex items-center justify-center transition-colors disabled:opacity-50"
@@ -222,8 +229,20 @@ export default function CharacterCard({
             <AppIcon name="refresh" className="w-4 h-4 text-[var(--glass-tone-info-fg)]" />
           )}
         </button>
+        {manualWaitTaskId && (
+          <button
+            type="button"
+            onClick={() => openManualAssetModal(manualWaitTaskId)}
+            disabled={uploadImage.isPending}
+            className="w-6 h-6 rounded hover:bg-[var(--glass-tone-success-bg)] flex items-center justify-center transition-colors disabled:opacity-50"
+            title="继续上传"
+          >
+            <AppIcon name="upload" className="w-4 h-4 text-[var(--glass-tone-success-fg)]" />
+          </button>
+        )}
         {onUndo && (appearance.previousImageUrl || appearance.previousImageUrls.length > 0) && (
           <button
+            type="button"
             onClick={onUndo}
             disabled={isAppearanceTaskRunning || isAnyTaskRunning}
             className="w-6 h-6 rounded hover:bg-[var(--glass-tone-warning-bg)] flex items-center justify-center transition-colors disabled:opacity-50"
@@ -234,6 +253,7 @@ export default function CharacterCard({
         )}
         {showDeleteButton && (
           <button
+            type="button"
             onClick={onDelete}
             className="w-6 h-6 rounded hover:bg-[var(--glass-tone-danger-bg)] flex items-center justify-center transition-colors"
             title={t('character.delete')}
@@ -308,8 +328,20 @@ export default function CharacterCard({
   // 单图模式或已选择模式
   const overlayActions = (
     <>
+      {manualWaitTaskId && (
+        <button
+          type="button"
+          onClick={() => openManualAssetModal(manualWaitTaskId)}
+          disabled={uploadImage.isPending}
+          className="w-7 h-7 rounded-full bg-[var(--glass-bg-surface-strong)] hover:bg-[var(--glass-tone-success-fg)] hover:text-white flex items-center justify-center transition-all shadow-sm disabled:opacity-50"
+          title="继续上传"
+        >
+          <AppIcon name="upload" className="w-4 h-4 text-[var(--glass-tone-success-fg)]" />
+        </button>
+      )}
       {!isAppearanceTaskRunning && !isAnyTaskRunning && (
         <button
+          type="button"
           onClick={() => triggerUpload(selectedIndex !== null ? selectedIndex : 0)}
           disabled={uploadImage.isPending || isAppearanceTaskRunning || isAnyTaskRunning}
           className="w-7 h-7 rounded-full bg-[var(--glass-bg-surface-strong)] hover:bg-[var(--glass-tone-success-fg)] hover:text-white flex items-center justify-center transition-all shadow-sm disabled:opacity-50"
@@ -324,6 +356,7 @@ export default function CharacterCard({
       )}
       {!isAppearanceTaskRunning && !isAnyTaskRunning && currentImageUrl && onImageEdit && (
         <button
+          type="button"
           onClick={() => onImageEdit(character.id, appearance.id, selectedIndex !== null ? selectedIndex : 0)}
           className="w-7 h-7 rounded-full flex items-center justify-center transition-all shadow-sm"
           style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
@@ -333,6 +366,7 @@ export default function CharacterCard({
         </button>
       )}
       <button
+        type="button"
         onClick={onRegenerate}
         disabled={uploadImage.isPending || isAppearanceTaskRunning}
         className={`w-7 h-7 rounded-full flex items-center justify-center transition-all shadow-sm active:scale-90 ${(isAppearanceTaskRunning || isAnyTaskRunning)
@@ -349,6 +383,7 @@ export default function CharacterCard({
       </button>
       {!isAppearanceTaskRunning && !isAnyTaskRunning && currentImageUrl && onUndo && (appearance.previousImageUrl || appearance.previousImageUrls.length > 0) && (
         <button
+          type="button"
           onClick={onUndo}
           disabled={isAppearanceTaskRunning || isAnyTaskRunning}
           className="w-7 h-7 rounded-full bg-[var(--glass-bg-surface-strong)] hover:bg-[var(--glass-tone-warning-fg)] hover:text-white flex items-center justify-center transition-all shadow-sm disabled:opacity-50"
@@ -363,6 +398,7 @@ export default function CharacterCard({
   const compactHeaderActions = (
     <>
       <button
+        type="button"
         onClick={onEdit}
         className="flex-shrink-0 w-5 h-5 rounded hover:bg-[var(--glass-bg-muted)] flex items-center justify-center transition-colors"
         title={t('video.panelCard.editPrompt')}
@@ -372,6 +408,7 @@ export default function CharacterCard({
       {showDeleteButton && (
         <div className="relative">
           <button
+            type="button"
             onClick={handleDeleteClick}
             className="flex-shrink-0 w-5 h-5 rounded hover:bg-[var(--glass-tone-danger-bg)] flex items-center justify-center transition-colors"
             title={appearanceCount <= 1 ? t('character.delete') : t('character.deleteOptions')}
@@ -381,12 +418,15 @@ export default function CharacterCard({
 
           {showDeleteMenu && appearanceCount > 1 && (
             <>
-              <div
+              <button
+                type="button"
+                aria-label="Close"
                 className="fixed inset-0 z-10"
                 onClick={() => setShowDeleteMenu(false)}
               />
               <div className="absolute right-0 top-full mt-1 z-20 bg-[var(--glass-bg-surface)] border border-[var(--glass-stroke-base)] rounded-lg shadow-lg py-1 min-w-[100px]">
                 <button
+                  type="button"
                   onClick={() => {
                     setShowDeleteMenu(false)
                     onDeleteAppearance?.()
@@ -396,6 +436,7 @@ export default function CharacterCard({
                   {t('image.deleteThis')}
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowDeleteMenu(false)
                     onDelete()

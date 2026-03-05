@@ -1,7 +1,9 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
+import { getPageLocale } from '@/lib/query/mutations/mutation-shared'
 import { logInfo as _ulogInfo } from '@/lib/logging/core'
+import { useWorkspaceProvider } from '../WorkspaceProvider'
 import {
   useAnalyzeProjectAssets,
   useScriptToStoryboardRunStream,
@@ -37,10 +39,10 @@ export function useWorkspaceExecution({
   novelText,
   t,
   onRefresh,
-  onUpdateConfig,
   onStageChange,
   onOpenAssetLibrary,
 }: UseWorkspaceExecutionParams) {
+  const { openManualAssetModal, shouldManual, subscribeTaskEvents } = useWorkspaceProvider()
   const analyzeProjectAssetsMutation = useAnalyzeProjectAssets(projectId)
 
   const [isSubmittingTTS] = useState(false)
@@ -51,8 +53,8 @@ export function useWorkspaceExecution({
   const [storyToScriptConsoleMinimized, setStoryToScriptConsoleMinimized] = useState(false)
   const [scriptToStoryboardConsoleMinimized, setScriptToStoryboardConsoleMinimized] = useState(false)
 
-  const storyToScriptStream = useStoryToScriptRunStream({ projectId, episodeId })
-  const scriptToStoryboardStream = useScriptToStoryboardRunStream({ projectId, episodeId })
+  const storyToScriptStream = useStoryToScriptRunStream({ projectId, episodeId, subscribeTaskEvents })
+  const scriptToStoryboardStream = useScriptToStoryboardRunStream({ projectId, episodeId, subscribeTaskEvents })
 
   const handleGenerateTTS = useCallback(async () => {
     _ulogInfo('[NovelPromotionWorkspace] TTS is disabled, skip generate request')
@@ -96,7 +98,34 @@ export function useWorkspaceExecution({
       setIsTransitioning(true)
       setStoryToScriptConsoleMinimized(false)
 
-      await onUpdateConfig('workflowMode', 'agent')
+      const manualStoryToScript = shouldManual('text', 'np.text.story_to_script')
+      if (manualStoryToScript) {
+        setTransitionProgress({ message: t('execution.storyToScriptRunning'), step: 'manual_wait' })
+        const res = await fetch(`/api/novel-promotion/${projectId}/manual/story-to-script-wait`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept-Language': getPageLocale() },
+          body: JSON.stringify({
+            episodeId,
+            content: storyContent,
+          }),
+        })
+        const data = await res.json().catch(() => null)
+        if (!res.ok) {
+          const message = data && typeof data === 'object' && typeof (data as { error?: unknown }).error === 'string'
+            ? (data as { error: string }).error
+            : `HTTP ${res.status}`
+          throw new Error(message)
+        }
+        const taskId = data && typeof data === 'object' && typeof (data as { taskId?: unknown }).taskId === 'string'
+          ? (data as { taskId: string }).taskId
+          : ''
+        if (!taskId) {
+          throw new Error('manual wait taskId is missing')
+        }
+        openManualAssetModal(taskId)
+        return
+      }
+
       setTransitionProgress({ message: t('execution.storyToScriptRunning'), step: 'streaming' })
       const runResult = await storyToScriptStream.run({
         episodeId,
@@ -126,7 +155,7 @@ export function useWorkspaceExecution({
       setIsTransitioning(false)
       setTransitionProgress({ message: '', step: '' })
     }
-  }, [analysisModel, episodeId, novelText, onOpenAssetLibrary, onRefresh, onStageChange, onUpdateConfig, storyToScriptStream, t])
+  }, [analysisModel, episodeId, novelText, onOpenAssetLibrary, onRefresh, onStageChange, openManualAssetModal, projectId, shouldManual, storyToScriptStream, t])
 
   const runScriptToStoryboardFlow = useCallback(async () => {
     if (!episodeId) {
@@ -135,6 +164,32 @@ export function useWorkspaceExecution({
     }
 
     try {
+      const manualScriptToStoryboard = shouldManual('text', 'np.text.script_to_storyboard')
+      if (manualScriptToStoryboard) {
+        setTransitionProgress({ message: t('execution.scriptToStoryboardRunning'), step: 'manual_wait' })
+        const res = await fetch(`/api/novel-promotion/${projectId}/manual/script-to-storyboard-wait`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept-Language': getPageLocale() },
+          body: JSON.stringify({
+            episodeId,
+          }),
+        })
+        const data = await res.json().catch(() => null)
+        if (!res.ok) {
+          const message = data && typeof data === 'object' && typeof (data as { error?: unknown }).error === 'string'
+            ? (data as { error: string }).error
+            : `HTTP ${res.status}`
+          throw new Error(message)
+        }
+        const taskId = data && typeof data === 'object' && typeof (data as { taskId?: unknown }).taskId === 'string'
+          ? (data as { taskId: string }).taskId
+          : ''
+        if (!taskId) {
+          throw new Error('manual wait taskId is missing')
+        }
+        openManualAssetModal(taskId)
+        return
+      }
       setScriptToStoryboardConsoleMinimized(false)
       setIsConfirmingAssets(true)
       setTransitionProgress({ message: t('execution.scriptToStoryboardRunning'), step: 'streaming' })
@@ -160,7 +215,7 @@ export function useWorkspaceExecution({
       setIsConfirmingAssets(false)
       setTransitionProgress({ message: '', step: '' })
     }
-  }, [analysisModel, episodeId, onRefresh, onStageChange, scriptToStoryboardStream, t])
+  }, [analysisModel, episodeId, onRefresh, onStageChange, openManualAssetModal, projectId, scriptToStoryboardStream, shouldManual, t])
 
   const showCreatingToast = useMemo(() => (
     storyToScriptStream.isRunning ||

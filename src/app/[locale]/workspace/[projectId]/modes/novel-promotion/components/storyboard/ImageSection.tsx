@@ -8,6 +8,7 @@ import { resolveTaskPresentationState } from '@/lib/task/presentation'
 import ImageSectionCandidateMode from './ImageSectionCandidateMode'
 import ImageSectionActionButtons from './ImageSectionActionButtons'
 import { AppIcon } from '@/components/ui/icons'
+import { useWorkspaceProvider } from '../../WorkspaceProvider'
 
 interface PanelCandidateData {
   candidates: string[]
@@ -26,6 +27,8 @@ interface ImageSectionProps {
   failedError: string | null
   candidateData: PanelCandidateData | null
   previousImageUrl?: string | null
+  runningTaskId?: string | null
+  runningTaskType?: string | null
   onRegeneratePanelImage: (panelId: string, count?: number, force?: boolean) => void
   onOpenEditModal: () => void
   onOpenAIDataModal: () => void
@@ -49,6 +52,8 @@ export default function ImageSection({
   failedError,
   candidateData,
   previousImageUrl,
+  runningTaskId,
+  runningTaskType,
   onRegeneratePanelImage,
   onOpenEditModal,
   onOpenAIDataModal,
@@ -60,9 +65,12 @@ export default function ImageSection({
   onPreviewImage,
 }: ImageSectionProps) {
   const t = useTranslations('storyboard')
+  const { openManualAssetModal } = useWorkspaceProvider()
   const [isTaskPulseAnimating, setIsTaskPulseAnimating] = useState(false)
   const cssAspectRatio = videoRatio.replace(':', '/')
   const hasValidCandidates = !!candidateData && candidateData.candidates.some((url) => !url.startsWith('PENDING:'))
+  const manualWaitTaskId =
+    runningTaskType === 'manual_asset_wait' && runningTaskId ? runningTaskId : null
 
   const triggerPulse = () => {
     setIsTaskPulseAnimating(true)
@@ -96,6 +104,17 @@ export default function ImageSection({
           state={state}
           className={backdropImageUrl ? 'bg-black/45 backdrop-blur-[1px]' : undefined}
         />
+        {manualWaitTaskId && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2">
+            <button
+              type="button"
+              onClick={() => openManualAssetModal(manualWaitTaskId)}
+              className="glass-btn-base glass-btn-tone-success px-4 py-2 text-xs rounded-lg transition-all active:scale-95"
+            >
+              继续上传
+            </button>
+          </div>
+        )}
       </div>
     )
   }
@@ -106,6 +125,7 @@ export default function ImageSection({
       <span className="text-xs text-center font-medium">{t('image.failed')}</span>
       <span className="text-[10px] text-center mt-1 line-clamp-2 px-1">{failedError}</span>
       <button
+        type="button"
         onClick={onClearError}
         className="glass-btn-base glass-btn-tone-danger mt-1 px-2 py-1 text-[10px] rounded-md"
       >
@@ -119,6 +139,7 @@ export default function ImageSection({
       <AppIcon name="imagePreview" className="w-8 h-8" />
       <span className="text-xs">{t('video.toolbar.showPending')}</span>
       <button
+        type="button"
         onClick={() => {
           triggerPulse()
           onRegeneratePanelImage(panelId, 1, false)

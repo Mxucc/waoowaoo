@@ -13,8 +13,8 @@ export interface ProjectAssetsData {
     locations: Location[]
 }
 
-const CHARACTER_TASK_TYPES = ['image_character', 'modify_asset_image', 'regenerate_group']
-const LOCATION_TASK_TYPES = ['image_location', 'modify_asset_image', 'regenerate_group']
+const CHARACTER_TASK_TYPES = ['image_character', 'modify_asset_image', 'regenerate_group', 'manual_asset_wait']
+const LOCATION_TASK_TYPES = ['image_location', 'modify_asset_image', 'regenerate_group', 'manual_asset_wait']
 
 function isRunningPhase(phase: string | null | undefined) {
     return phase === 'queued' || phase === 'processing'
@@ -90,45 +90,57 @@ export function useProjectAssets(projectId: string | null) {
             byKey.get(`${targetType}:${targetId}`) || null
 
         return {
-            ...assets,
-            characters: (assets.characters || []).map((character) => {
-                const characterState = getState('CharacterAppearance', character.id)
+          ...assets,
+          characters: (assets.characters || []).map((character) => {
+            const characterState = getState('CharacterAppearance', character.id)
+            return {
+              ...character,
+              appearances: (character.appearances || []).map((appearance) => {
+                const appearanceState = getState('CharacterAppearance', appearance.id)
+                const lastError = appearanceState?.lastError
+                  || characterState?.lastError
+                  || null
+                const runningState =
+                  isRunningPhase(appearanceState?.phase)
+                    ? appearanceState
+                    : (isRunningPhase(characterState?.phase) ? characterState : null)
                 return {
-                    ...character,
-                    appearances: (character.appearances || []).map((appearance) => {
-                        const appearanceState = getState('CharacterAppearance', appearance.id)
-                        const lastError = appearanceState?.lastError
-                            || characterState?.lastError
-                            || null
-                        return {
-                            ...appearance,
-                            imageTaskRunning:
-                                isRunningPhase(appearanceState?.phase) ||
-                                isRunningPhase(characterState?.phase),
-                            lastError,
-                        }
-                    }),
+                  ...appearance,
+                  imageTaskRunning:
+                    isRunningPhase(appearanceState?.phase) ||
+                    isRunningPhase(characterState?.phase),
+                  runningTaskId: runningState?.runningTaskId || null,
+                  runningTaskType: runningState?.runningTaskType || null,
+                  lastError,
                 }
-            }),
-            locations: (assets.locations || []).map((location) => {
-                const locationState = getState('LocationImage', location.id)
+              }),
+            }
+          }),
+          locations: (assets.locations || []).map((location) => {
+            const locationState = getState('LocationImage', location.id)
+            return {
+              ...location,
+              images: (location.images || []).map((image) => {
+                const imageState = getState('LocationImage', image.id)
+                const lastError = imageState?.lastError
+                  || locationState?.lastError
+                  || null
+                const runningState =
+                  isRunningPhase(imageState?.phase)
+                    ? imageState
+                    : (isRunningPhase(locationState?.phase) ? locationState : null)
                 return {
-                    ...location,
-                    images: (location.images || []).map((image) => {
-                        const imageState = getState('LocationImage', image.id)
-                        const lastError = imageState?.lastError
-                            || locationState?.lastError
-                            || null
-                        return {
-                            ...image,
-                            imageTaskRunning:
-                                isRunningPhase(imageState?.phase) ||
-                                isRunningPhase(locationState?.phase),
-                            lastError,
-                        }
-                    }),
+                  ...image,
+                  imageTaskRunning:
+                    isRunningPhase(imageState?.phase) ||
+                    isRunningPhase(locationState?.phase),
+                  runningTaskId: runningState?.runningTaskId || null,
+                  runningTaskType: runningState?.runningTaskType || null,
+                  lastError,
                 }
-            }),
+              }),
+            }
+          }),
         } as ProjectAssetsData
     }, [assetsQuery.data, taskStatesQuery.byKey])
 

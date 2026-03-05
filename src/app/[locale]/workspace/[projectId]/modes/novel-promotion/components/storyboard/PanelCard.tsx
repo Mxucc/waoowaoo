@@ -97,6 +97,7 @@ export default function PanelCard({
       {/* 删除按钮 - 右上角外部 */}
       {!isModifying && !isDeleting && (
         <button
+          type="button"
           onClick={onDelete}
           className="absolute -top-2 -right-2 z-10 opacity-0 group-hover/card:opacity-100 transition-opacity bg-[var(--glass-tone-danger-fg)] hover:bg-[var(--glass-tone-danger-fg)] text-white w-5 h-5 rounded-full flex items-center justify-center text-xs shadow-md"
           title={t('panelActions.deleteShot')}
@@ -119,6 +120,8 @@ export default function PanelCard({
           failedError={failedError}
           candidateData={candidateData}
           previousImageUrl={previousImageUrl}
+          runningTaskId={panel.runningTaskId}
+          runningTaskType={panel.runningTaskType}
           onRegeneratePanelImage={onRegeneratePanelImage}
           onOpenEditModal={onOpenEditModal}
           onOpenAIDataModal={onOpenAIDataModal}

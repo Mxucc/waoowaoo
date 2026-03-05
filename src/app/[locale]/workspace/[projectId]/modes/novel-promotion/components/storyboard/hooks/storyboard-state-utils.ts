@@ -42,7 +42,9 @@ export function buildStoryboardSyncSignature(
       const candidateImages = typeof panel.candidateImages === 'string' ? panel.candidateImages : ''
       const error = typeof panel.imageErrorMessage === 'string' ? panel.imageErrorMessage : ''
       const runningFlag = panel.imageTaskRunning ? '1' : '0'
-      return `${id}:${updatedAt}:${imageUrl}:${candidateImages}:${error}:${runningFlag}`
+      const runningTaskId = typeof panelRecord.runningTaskId === 'string' ? panelRecord.runningTaskId : ''
+      const runningTaskType = typeof panelRecord.runningTaskType === 'string' ? panelRecord.runningTaskType : ''
+      return `${id}:${updatedAt}:${imageUrl}:${candidateImages}:${error}:${runningFlag}:${runningTaskType}:${runningTaskId}`
     }).join(',')
 
     const storyboardRecord = storyboard as unknown as Record<string, unknown>

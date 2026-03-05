@@ -9,6 +9,7 @@ import { useTranslations } from 'next-intl'
 import { useState, useRef } from 'react'
 import { Location } from '@/types/project'
 import { shouldShowError } from '@/lib/error-utils'
+import { useWorkspaceProvider } from '../../WorkspaceProvider'
 import { useUploadProjectLocationImage } from '@/lib/query/mutations'
 import { resolveTaskPresentationState } from '@/lib/task/presentation'
 import TaskStatusInline from '@/components/task/TaskStatusInline'
@@ -49,6 +50,7 @@ export default function LocationCard({
   projectId,
   onConfirmSelection
 }: LocationCardProps) {
+  const { openManualAssetModal } = useWorkspaceProvider()
   // 🔥 使用 mutation
   const uploadImage = useUploadProjectLocationImage(projectId)
   const t = useTranslations('assets')
@@ -120,6 +122,9 @@ export default function LocationCard({
   )
 
   const locationTaskRunning = (location.images || []).some((image) => !!image.imageTaskRunning)
+  const manualWaitTaskId =
+    (location.images || []).find((img) => img.runningTaskType === 'manual_asset_wait' && img.runningTaskId)?.runningTaskId
+      || null
   const locationTaskPresentation = locationTaskRunning
     ? resolveTaskPresentationState({
       phase: 'processing',
@@ -169,6 +174,7 @@ export default function LocationCard({
     const selectionHeaderActions = (
       <>
         <button
+          type="button"
           onClick={onRegenerate}
           disabled={isTaskRunning || isAnyTaskRunning || uploadImage.isPending}
           className="w-6 h-6 rounded hover:bg-[var(--glass-tone-info-bg)] flex items-center justify-center transition-colors disabled:opacity-50"
@@ -180,8 +186,20 @@ export default function LocationCard({
             <AppIcon name="refresh" className="w-4 h-4 text-[var(--glass-tone-info-fg)]" />
           )}
         </button>
+        {manualWaitTaskId && (
+          <button
+            type="button"
+            onClick={() => openManualAssetModal(manualWaitTaskId)}
+            disabled={uploadImage.isPending}
+            className="w-6 h-6 rounded hover:bg-[var(--glass-tone-success-bg)] flex items-center justify-center transition-colors disabled:opacity-50"
+            title="继续上传"
+          >
+            <AppIcon name="upload" className="w-4 h-4 text-[var(--glass-tone-success-fg)]" />
+          </button>
+        )}
         {onUndo && hasPreviousVersion && (
           <button
+            type="button"
             onClick={onUndo}
             disabled={isTaskRunning || isAnyTaskRunning}
             className="w-6 h-6 rounded hover:bg-[var(--glass-tone-warning-bg)] flex items-center justify-center transition-colors disabled:opacity-50"
@@ -191,6 +209,7 @@ export default function LocationCard({
           </button>
         )}
         <button
+          type="button"
           onClick={onDelete}
           className="w-6 h-6 rounded hover:bg-[var(--glass-tone-danger-bg)] flex items-center justify-center transition-colors"
           title={t('location.delete')}
@@ -250,7 +269,19 @@ export default function LocationCard({
   // 单图模式
   const singleOverlayActions = (
     <>
+      {manualWaitTaskId && (
+        <button
+          type="button"
+          onClick={() => openManualAssetModal(manualWaitTaskId)}
+          disabled={uploadImage.isPending}
+          className="w-7 h-7 rounded-full bg-[var(--glass-bg-surface-strong)] hover:bg-[var(--glass-tone-success-fg)] hover:text-white flex items-center justify-center transition-all shadow-sm disabled:opacity-50"
+          title="继续上传"
+        >
+          <AppIcon name="upload" className="w-4 h-4 text-[var(--glass-tone-success-fg)]" />
+        </button>
+      )}
       <button
+        type="button"
         onClick={() => triggerUpload(selectedIndex !== null ? selectedIndex : 0)}
         disabled={uploadImage.isPending || isTaskRunning || isAnyTaskRunning}
         className="w-7 h-7 rounded-full bg-[var(--glass-bg-surface-strong)] hover:bg-[var(--glass-tone-success-fg)] hover:text-white flex items-center justify-center transition-all shadow-sm disabled:opacity-50"
@@ -264,6 +295,7 @@ export default function LocationCard({
       </button>
       {!isTaskRunning && currentImageUrl && onImageEdit && (
         <button
+          type="button"
           onClick={() => onImageEdit(location.id, currentImageIndex)}
           className="w-7 h-7 rounded-full flex items-center justify-center transition-all shadow-sm"
           style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
@@ -273,6 +305,7 @@ export default function LocationCard({
         </button>
       )}
       <button
+        type="button"
         onClick={onRegenerate}
         disabled={uploadImage.isPending || isTaskRunning}
         className={`w-7 h-7 rounded-full flex items-center justify-center transition-all shadow-sm active:scale-90 ${isTaskRunning
@@ -289,6 +322,7 @@ export default function LocationCard({
       </button>
       {!isTaskRunning && currentImageUrl && onUndo && hasPreviousVersion && (
         <button
+          type="button"
           onClick={onUndo}
           disabled={isTaskRunning || isAnyTaskRunning}
           className="w-7 h-7 rounded-full bg-[var(--glass-bg-surface-strong)] hover:bg-[var(--glass-tone-warning-fg)] hover:text-white flex items-center justify-center transition-all shadow-sm disabled:opacity-50"
@@ -304,6 +338,7 @@ export default function LocationCard({
     <>
       {onCopyFromGlobal && (
         <button
+          type="button"
           onClick={onCopyFromGlobal}
           className="flex-shrink-0 w-5 h-5 rounded hover:bg-[var(--glass-tone-info-bg)] flex items-center justify-center transition-colors"
           title={t('character.copyFromGlobal')}
@@ -312,6 +347,7 @@ export default function LocationCard({
         </button>
       )}
       <button
+        type="button"
         onClick={onEdit}
         className="flex-shrink-0 w-5 h-5 rounded hover:bg-[var(--glass-bg-muted)] flex items-center justify-center transition-colors"
         title={t('location.edit')}
@@ -319,6 +355,7 @@ export default function LocationCard({
         <AppIcon name="edit" className="w-3.5 h-3.5 text-[var(--glass-text-secondary)]" />
       </button>
       <button
+        type="button"
         onClick={onDelete}
         className="flex-shrink-0 w-5 h-5 rounded hover:bg-[var(--glass-tone-danger-bg)] flex items-center justify-center transition-colors"
         title={t('location.delete')}

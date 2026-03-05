@@ -7,6 +7,7 @@ interface VoiceLineListProps {
   voiceLines: VoiceLine[]
   runningLineIds: Set<string>
   voiceStatusStateByLineId: Map<string, TaskPresentationState>
+  manualWaitTaskIdByLineId: Map<string, string>
   playingLineId: string | null
   analyzing: boolean
   getSpeakerVoiceUrl: (speaker: string) => string | null
@@ -25,6 +26,7 @@ export default function VoiceLineList({
   voiceLines,
   runningLineIds,
   voiceStatusStateByLineId,
+  manualWaitTaskIdByLineId,
   playingLineId,
   analyzing,
   getSpeakerVoiceUrl,
@@ -50,6 +52,7 @@ export default function VoiceLineList({
           line={line}
           isVoiceTaskRunning={runningLineIds.has(line.id)}
           statusState={voiceStatusStateByLineId.get(line.id) || null}
+          manualWaitTaskId={manualWaitTaskIdByLineId.get(line.id) || null}
           isPlaying={playingLineId === line.id}
           hasVoice={!!getSpeakerVoiceUrl(line.speaker)}
           onTogglePlay={onTogglePlayAudio}

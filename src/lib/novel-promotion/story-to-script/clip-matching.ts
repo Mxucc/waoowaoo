@@ -126,7 +126,10 @@ function tryExactRawMatch(content: string, startText: string, endText: string, f
   while (startCursor < content.length) {
     const startIndex = content.indexOf(startText, startCursor)
     if (startIndex === -1) return null
-    const endIndex = content.indexOf(endText, startIndex + startText.length)
+
+    // 支持 startText === endText 的边界：要求 end 从 start 处开始匹配
+    const endSearchFrom = startIndex + (startText === endText ? 0 : startText.length)
+    const endIndex = content.indexOf(endText, endSearchFrom)
     if (endIndex !== -1) {
       return {
         startIndex,
@@ -157,6 +160,7 @@ function tryExactNormalizedMatch(
   endQuery: string,
   fromIndex: number,
 ): ClipBoundaryMatch | null {
+  const isSameBoundary = startQuery === endQuery
   let startNormCursor = findNormIndexForRaw(normalized, fromIndex)
   while (startNormCursor < normalized.text.length) {
     const startNormIndex = normalized.text.indexOf(startQuery, startNormCursor)
@@ -168,7 +172,7 @@ function tryExactNormalizedMatch(
       continue
     }
 
-    let endNormCursor = startNormIndex + startQuery.length
+    let endNormCursor = startNormIndex + (isSameBoundary ? 0 : startQuery.length)
     while (endNormCursor < normalized.text.length) {
       const endNormIndex = normalized.text.indexOf(endQuery, endNormCursor)
       if (endNormIndex === -1) break

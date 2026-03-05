@@ -3,6 +3,7 @@
 import { CapsuleNav, EpisodeSelector } from '@/components/ui/CapsuleNav'
 import { SettingsModal, WorldContextModal } from '@/components/ui/ConfigModals'
 import WorkspaceTopActions from './WorkspaceTopActions'
+import { useWorkspaceProvider } from '../WorkspaceProvider'
 import type { NovelPromotionPanel } from '@/types/project'
 import type { CapabilitySelections, ModelCapabilities } from '@/lib/model-config-contract'
 
@@ -115,11 +116,13 @@ export default function WorkspaceHeaderShell({
   settingsLabel,
   refreshTitle,
 }: WorkspaceHeaderShellProps) {
+  const { manualAssetMode, setManualAssetMode } = useWorkspaceProvider()
   return (
     <>
       <SettingsModal
         isOpen={isSettingsModalOpen}
         onClose={onCloseSettingsModal}
+        projectId={projectId}
         availableModels={availableModels}
         modelsLoaded={modelsLoaded}
         artStyle={artStyle ?? undefined}
@@ -142,6 +145,8 @@ export default function WorkspaceHeaderShell({
         onVideoRatioChange={(value) => { onUpdateConfig('videoRatio', value) }}
         onCapabilityOverridesChange={(value) => { onUpdateConfig('capabilityOverrides', value) }}
         onTTSRateChange={(value) => { onUpdateConfig('ttsRate', value) }}
+        manualAssetMode={manualAssetMode}
+        onManualAssetModeChange={setManualAssetMode}
       />
 
       <WorldContextModal

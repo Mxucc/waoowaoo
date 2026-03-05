@@ -6,6 +6,7 @@ import { initializeFonts, createLabelSVG } from '@/lib/fonts'
 import { decodeImageUrlsFromDb, encodeImageUrls } from '@/lib/contracts/image-urls-contract'
 import { requireProjectAuthLight, isErrorResponse } from '@/lib/api-auth'
 import { apiHandler, ApiError } from '@/lib/api-errors'
+import { completeManualAssetWaitKey } from '@/lib/manual-assets/manual-wait'
 
 interface CharacterAppearanceRecord {
   id: string
@@ -64,6 +65,8 @@ export const POST = apiHandler(async (
   const appearanceId = formData.get('appearanceId') as string | null  // UUID
   const imageIndex = formData.get('imageIndex') as string | null
   const labelText = formData.get('labelText') as string // 文字标识符
+  const manualTaskIdRaw = formData.get('manualTaskId')
+  const manualTaskId = typeof manualTaskIdRaw === 'string' ? manualTaskIdRaw.trim() : ''
 
   if (!file || !type || !id || !labelText) {
     throw new ApiError('INVALID_PARAMS')
@@ -144,11 +147,27 @@ export const POST = apiHandler(async (
       data: updateData
     })
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       imageKey: key,
       imageIndex: targetIndex
     })
+
+    if (manualTaskId) {
+      const completion = await completeManualAssetWaitKey({
+        taskId: manualTaskId,
+        projectId,
+        userId: authResult.session.user.id,
+        expectedTargetType: 'CharacterAppearance',
+        expectedTargetId: appearance.id,
+        completedKey: String(targetIndex),
+      })
+      if (!completion.ok) {
+        throw new ApiError('INVALID_PARAMS', { code: completion.code })
+      }
+    }
+
+    return response
 
   } else if (type === 'location') {
     // 更新场景图片
@@ -195,11 +214,27 @@ export const POST = apiHandler(async (
         }
       }
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: true,
         imageKey: key,
         imageIndex: targetImageIndex
       })
+
+      if (manualTaskId) {
+        const completion = await completeManualAssetWaitKey({
+          taskId: manualTaskId,
+          projectId,
+          userId: authResult.session.user.id,
+          expectedTargetType: 'LocationImage',
+          expectedTargetId: id,
+          completedKey: String(targetImageIndex),
+        })
+        if (!completion.ok) {
+          throw new ApiError('INVALID_PARAMS', { code: completion.code })
+        }
+      }
+
+      return response
     } else {
       // 创建新的图片记录
       const maxIndex = location.images?.length || 0
@@ -219,11 +254,27 @@ export const POST = apiHandler(async (
         })
       }
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: true,
         imageKey: key,
         imageIndex: maxIndex
       })
+
+      if (manualTaskId) {
+        const completion = await completeManualAssetWaitKey({
+          taskId: manualTaskId,
+          projectId,
+          userId: authResult.session.user.id,
+          expectedTargetType: 'LocationImage',
+          expectedTargetId: id,
+          completedKey: String(maxIndex),
+        })
+        if (!completion.ok) {
+          throw new ApiError('INVALID_PARAMS', { code: completion.code })
+        }
+      }
+
+      return response
     }
   }
 

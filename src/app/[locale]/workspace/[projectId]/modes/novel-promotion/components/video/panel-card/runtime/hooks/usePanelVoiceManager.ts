@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MatchedVoiceLine } from '../../../types'
 import { EMPTY_RUNNING_VOICE_LINE_IDS, getErrorMessage } from '../shared'
+import { useWorkspaceProvider } from '@/app/[locale]/workspace/[projectId]/modes/novel-promotion/WorkspaceProvider'
 
 interface UsePanelVoiceManagerParams {
   projectId: string
@@ -23,6 +24,7 @@ export function usePanelVoiceManager({
   runningVoiceLineIds = EMPTY_RUNNING_VOICE_LINE_IDS,
   audioFailedMessage,
 }: UsePanelVoiceManagerParams) {
+  const { manualAssetMode } = useWorkspaceProvider()
   const generateProjectVoiceMutation = useGenerateProjectVoice(projectId)
   const queryClient = useQueryClient()
   const [submittingAudioIds, setSubmittingAudioIds] = useState<Set<string>>(new Set())
@@ -104,6 +106,7 @@ export function usePanelVoiceManager({
       const data = await generateProjectVoiceMutation.mutateAsync({
         episodeId,
         lineId: voiceLine.id,
+        ...(manualAssetMode ? { manualMode: true, openManualModal: true } : {}),
       })
 
       if (isAsyncTaskResponse(data)) {
@@ -137,14 +140,15 @@ export function usePanelVoiceManager({
         next.delete(voiceLine.id)
         return next
       })
-      if (handoffToTaskState) return
-      setSubmittingVoiceAudioIds((prev) => {
-        const next = new Set(prev)
-        next.delete(voiceLine.id)
-        return next
-      })
+      if (!handoffToTaskState) {
+        setSubmittingVoiceAudioIds((prev) => {
+          const next = new Set(prev)
+          next.delete(voiceLine.id)
+          return next
+        })
+      }
     }
-  }, [audioFailedMessage, episodeId, generateProjectVoiceMutation, projectId, queryClient])
+  }, [audioFailedMessage, episodeId, generateProjectVoiceMutation, manualAssetMode, projectId, queryClient])
 
   const hasMatchedVoiceLines = localVoiceLines.length > 0
   const hasMatchedAudio = localVoiceLines.some((line) => line.audioUrl)

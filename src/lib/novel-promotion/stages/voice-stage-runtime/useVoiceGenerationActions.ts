@@ -12,12 +12,13 @@ interface MutationLike<TInput = unknown, TOutput = unknown> {
 interface UseVoiceGenerationActionsParams {
   episodeId: string
   t: (key: string) => string
+  manualAssetMode: boolean
   voiceLines: VoiceLine[]
   linesWithAudio: number
   speakerCharacterMap: Record<string, Character>
   speakerVoices: Record<string, SpeakerVoiceEntry>
   analyzeVoiceMutation: MutationLike<{ episodeId: string }>
-  generateVoiceMutation: MutationLike<{ episodeId: string; lineId?: string; all?: boolean }, {
+  generateVoiceMutation: MutationLike<{ episodeId: string; lineId?: string; all?: boolean; manualMode?: boolean; openManualModal?: boolean }, {
     success?: boolean
     error?: string
     async?: boolean
@@ -33,6 +34,7 @@ interface UseVoiceGenerationActionsParams {
 export function useVoiceGenerationActions({
   episodeId,
   t,
+  manualAssetMode,
   voiceLines,
   linesWithAudio,
   speakerCharacterMap,
@@ -68,7 +70,11 @@ export function useVoiceGenerationActions({
     let handoffToTaskState = false
 
     try {
-      const data = await generateVoiceMutation.mutateAsync({ episodeId, lineId })
+      const data = await generateVoiceMutation.mutateAsync({
+        episodeId,
+        lineId,
+        ...(manualAssetMode ? { manualMode: true, openManualModal: true } : {}),
+      })
       if (!data?.success) {
         throw new Error(data?.error || t('errors.generateFailed'))
       }
@@ -85,15 +91,16 @@ export function useVoiceGenerationActions({
         alert(`${t('errors.generateFailed')}: ${getErrorMessage(error)}`)
       }
     } finally {
-      if (handoffToTaskState) return
-      setSubmittingVoiceLineIds((prev) => {
-        if (!prev.has(lineId)) return prev
-        const next = new Set(prev)
-        next.delete(lineId)
-        return next
-      })
+      if (!handoffToTaskState) {
+        setSubmittingVoiceLineIds((prev) => {
+          if (!prev.has(lineId)) return prev
+          const next = new Set(prev)
+          next.delete(lineId)
+          return next
+        })
+      }
     }
-  }, [episodeId, generateVoiceMutation, notifyVoiceLinesChanged, setSubmittingVoiceLineIds, t])
+  }, [episodeId, generateVoiceMutation, manualAssetMode, notifyVoiceLinesChanged, setSubmittingVoiceLineIds, t])
 
   const handleGenerateAll = useCallback(async () => {
     const linesToGenerate = voiceLines.filter((line) => {
@@ -113,7 +120,11 @@ export function useVoiceGenerationActions({
     let handoffToTaskState = false
 
     try {
-      const data = await generateVoiceMutation.mutateAsync({ episodeId, all: true })
+      const data = await generateVoiceMutation.mutateAsync({
+        episodeId,
+        all: true,
+        ...(manualAssetMode ? { manualMode: true, openManualModal: false } : {}),
+      })
       if (!Array.isArray(data.taskIds) || data.taskIds.length === 0) {
         setSubmittingVoiceLineIds((prev) => {
           const next = new Set(prev)
@@ -136,16 +147,18 @@ export function useVoiceGenerationActions({
       }
     } finally {
       setIsBatchSubmittingAll(false)
-      if (handoffToTaskState) return
-      setSubmittingVoiceLineIds((prev) => {
-        const next = new Set(prev)
-        for (const lineId of lineIds) next.delete(lineId)
-        return next
-      })
+      if (!handoffToTaskState) {
+        setSubmittingVoiceLineIds((prev) => {
+          const next = new Set(prev)
+          for (const lineId of lineIds) next.delete(lineId)
+          return next
+        })
+      }
     }
   }, [
     episodeId,
     generateVoiceMutation,
+    manualAssetMode,
     notifyVoiceLinesChanged,
     setSubmittingVoiceLineIds,
     speakerCharacterMap,
