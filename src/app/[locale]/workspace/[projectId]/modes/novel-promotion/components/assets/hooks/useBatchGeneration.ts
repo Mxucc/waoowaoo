@@ -55,9 +55,6 @@ export function useBatchGeneration({
                 openManualModal: false,
             })
         } else if (type === 'location') {
-            await generateLocationImage.mutateAsync({
-                locationId: id,
-                imageIndex: 0,
                 manualMode: shouldManual('image', 'np.image.location'),
                 openManualModal: false,
             })

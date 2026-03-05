@@ -88,9 +88,6 @@ export default function AssetsStage({
       })
     } else if (type === 'location') {
       // 场景生成默认使用 imageIndex: 0
-      await generateLocationImage.mutateAsync({
-        locationId: id,
-        imageIndex: 0,
         manualMode: shouldManual('image', 'np.image.location'),
         openManualModal,
       })

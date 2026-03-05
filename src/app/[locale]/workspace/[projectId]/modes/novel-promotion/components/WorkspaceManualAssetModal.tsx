@@ -237,7 +237,6 @@ export default function WorkspaceManualAssetModal() {
       }
 
       const nextRemaining = (manualAsset.remainingKeys || []).filter((k) => k !== item.key)
-
       setManualAsset((prev) => {
         if (!prev) return prev
         return {
@@ -329,7 +328,7 @@ export default function WorkspaceManualAssetModal() {
                     readOnly
                     value={item.prompt || ''}
                   />
-                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
                     {kind === 'text' ? (
                       <textarea
                         className="w-full rounded-lg border border-[var(--glass-border)] bg-[var(--glass-surface)] p-3 text-xs text-[var(--glass-text)]"
