@@ -64,7 +64,7 @@ docker compose down && docker compose up -d --build
 **Prerequisites**: Install [Docker Desktop](https://docs.docker.com/get-docker/)
 
 ```bash
-git clone https://github.com/saturndec/waoowaoo.git
+git clone https://github.com/Mxucc/waoowaoo.git
 cd waoowaoo
 docker compose up -d
 ```
